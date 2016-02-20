@@ -1,0 +1,15 @@
+= griffon-lombok-plugin
+:linkattrs:
+:project-name: griffon-lombok-plugin
+
+image:http://img.shields.io/travis/griffon-plugins/{project-name}/master.svg["Build Status", link="https://travis-ci.org/griffon-plugins/{project-name}"]
+image:http://img.shields.io/coveralls/griffon-plugins/{project-name}/master.svg["Coverage Status", link="https://coveralls.io/r/griffon-plugins/{project-name}"]
+image:http://img.shields.io/badge/license-ASF2-blue.svg["Apache License 2", link="http://www.apache.org/licenses/LICENSE-2.0.txt"]
+image:https://api.bintray.com/packages/griffon/griffon-plugins/{project-name}/images/download.svg[link="https://bintray.com/griffon/griffon-plugins/{project-name}/_latestVersion"]
+
+---
+
+Enables Griffon specific link:https://projectlombok.org/[Lombok] transformations in Java code.
+
+Refer to the link:http://griffon-plugins.github.io/{project-name}/[plugin guide, window="_blank"] for
+further information on configuration and usage.
