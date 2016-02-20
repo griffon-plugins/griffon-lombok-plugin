@@ -1,0 +1,11 @@
+apply plugin: 'java'
+
+apply from: rootProject.file('gradle/code-coverage.gradle')
+
+dependencies {
+    compile("org.codehaus.griffon:griffon-core-compile:${rootProject.griffonVersion}") {
+        transitive = false
+    }
+    compile 'javax.inject:javax.inject:1'
+    compile 'org.projectlombok:lombok:1.16.6'
+}

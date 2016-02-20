@@ -1,0 +1,7 @@
+apply plugin: 'java'
+
+apply from: rootProject.file('gradle/code-coverage.gradle')
+
+dependencies {
+    compile project(':griffon-core-lombok-compile')
+}
