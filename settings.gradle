@@ -1,6 +1,7 @@
 include 'subprojects/griffon-core-lombok-compile'
 include 'subprojects/griffon-javafx-lombok-compile'
 include 'subprojects/griffon-lombok-guide'
+include 'subprojects/griffon-lombok-test'
 
 rootProject.name = 'griffon-lombok-plugin'
 rootProject.children.each { project ->

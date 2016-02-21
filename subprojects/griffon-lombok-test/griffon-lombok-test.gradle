@@ -1,0 +1,31 @@
+apply plugin: 'java'
+apply plugin: 'groovy'
+
+configurations {
+    ecj
+}
+
+//sourceSets {
+//    ecj {
+//        main {
+//            java.srcDirs = ['src/main/java']
+//            resources.srcDirs = ['src/main/resources']
+//            compileClasspath += (configurations.compile + configurations.compileOnly)
+//        }
+//        test {
+//            groovy.srcDirs = ['src/test/groovy']
+//            resources.srcDirs = ['src/test/resources']
+//            compileClasspath += (configurations.testCompile + configurations.testCompileOnly)
+//        }
+//    }
+//}
+
+dependencies {
+    ecj "org.eclipse.jdt.core.compiler:ecj:3.7.1"
+    compileOnly project(':griffon-core-lombok-compile')
+    compile "org.codehaus.griffon:griffon-core-compile:${rootProject.griffonVersion}"
+}
+
+//task testEcj(type: Test)
+
+//tasks.check.dependsOn testEcj
