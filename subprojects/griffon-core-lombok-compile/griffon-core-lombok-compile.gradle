@@ -2,10 +2,40 @@ apply plugin: 'java'
 
 apply from: rootProject.file('gradle/code-coverage.gradle')
 
+def unpackedAndRenamedLombokDir = file("$buildDir/lombok")
+
+task unpackAndRenameLombok {
+    def lombokJar = configurations.compile.filter { it.name ==~ /lombok.*[.]jar/ }
+    inputs.files lombokJar
+    outputs.dir unpackedAndRenamedLombokDir
+    doFirst {
+        mkdir unpackedAndRenamedLombokDir
+        delete unpackedAndRenamedLombokDir.listFiles()
+    }
+    doLast {
+        copy {
+            from zipTree(lombokJar.singleFile)
+            into unpackedAndRenamedLombokDir
+            rename "(.*)[.]SCL[.]lombok", '$1.class'
+        }
+    }
+}
+
+sourceSets {
+    lombok {
+        output.dir(unpackedAndRenamedLombokDir, builtBy: unpackAndRenameLombok)
+    }
+    main {
+        compileClasspath += sourceSets.lombok.output
+    }
+}
+
 dependencies {
     compile("org.codehaus.griffon:griffon-core-compile:${rootProject.griffonVersion}") {
         transitive = false
     }
     compile 'javax.inject:javax.inject:1'
     compile 'org.projectlombok:lombok:1.16.6'
+
+    compile files(unpackedAndRenamedLombokDir)
 }
