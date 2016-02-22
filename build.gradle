@@ -96,6 +96,7 @@ subprojects { subproj ->
         }
 
         dependencies {
+            compileOnly "org.kordamp.jipsy:jipsy:0.4.0"
             testCompile 'junit:junit:4.12'
             testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
             testCompile 'org.slf4j:slf4j-simple:1.7.13'
