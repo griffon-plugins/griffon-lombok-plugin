@@ -2,11 +2,14 @@ apply plugin: 'java'
 
 apply from: rootProject.file('gradle/code-coverage.gradle')
 
+configurations {
+    lombok
+}
+
 def unpackedAndRenamedLombokDir = file("$buildDir/lombok")
 
 task unpackAndRenameLombok {
-    def lombokJar = configurations.compile.filter { it.name ==~ /lombok.*[.]jar/ }
-    inputs.files lombokJar
+    inputs.files configurations.lombok
     outputs.dir unpackedAndRenamedLombokDir
     doFirst {
         mkdir unpackedAndRenamedLombokDir
@@ -14,7 +17,7 @@ task unpackAndRenameLombok {
     }
     doLast {
         copy {
-            from zipTree(lombokJar.singleFile)
+            from zipTree(configurations.lombok.singleFile)
             into unpackedAndRenamedLombokDir
             rename "(.*)[.]SCL[.]lombok", '$1.class'
         }
@@ -22,20 +25,23 @@ task unpackAndRenameLombok {
 }
 
 sourceSets {
-    lombok {
+    main {
         output.dir(unpackedAndRenamedLombokDir, builtBy: unpackAndRenameLombok)
     }
-    main {
-        compileClasspath += sourceSets.lombok.output
-    }
+}
+
+tasks.compileJava {
+    dependsOn unpackAndRenameLombok
 }
 
 dependencies {
     compile("org.codehaus.griffon:griffon-core-compile:${rootProject.griffonVersion}") {
         transitive = false
     }
+    compile files("${System.properties['java.home']}/../lib/tools.jar")
+    compile "org.eclipse.jdt:org.eclipse.jdt.core:3.10.0"
     compile 'javax.inject:javax.inject:1'
-    compile 'org.projectlombok:lombok:1.16.6'
+    lombok 'org.projectlombok:lombok:1.16.6'
 
-    compile files(unpackedAndRenamedLombokDir)
+    compileOnly files(unpackedAndRenamedLombokDir)
 }
