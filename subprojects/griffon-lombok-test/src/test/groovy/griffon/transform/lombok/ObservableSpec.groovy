@@ -41,16 +41,16 @@ class ObservableSpec extends Specification {
 
         when:
         PropertyChangeListener listener = Mock()
-        bean.addProperyChangeListener("stringProperty", listener)
+        bean.addProperyChangeListener("theString", listener)
 
         and:
-        bean.stringProperty = "test"
+        bean.theString = "test"
 
         then:
         1 * listener.propertyChange(_)
 
         when:
-        bean.intProperty = 1
+        bean.theNativeString = 1
 
         then:
         0 * listener.propertyChange(_)

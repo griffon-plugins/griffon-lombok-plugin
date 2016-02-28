@@ -19,6 +19,14 @@ import griffon.transform.Observable;
 
 @Observable
 public class ObservableType {
-    private String stringProperty;
-    private int intProperty;
+    private String theString;
+    private int theNativeInt;
+    private long theNativeLong;
+    private float theNativeFloat;
+    private double theNativeDouble;
+    private Object theObject;
+    private Integer theInteger;
+    private Long theLong;
+    private Float theFloat;
+    private Double theDouble;
 }

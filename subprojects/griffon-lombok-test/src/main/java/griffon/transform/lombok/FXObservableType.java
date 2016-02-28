@@ -15,27 +15,33 @@
  */
 package griffon.transform.lombok;
 
-import griffon.transform.Observable;
+import griffon.transform.FXObservable;
 
-public class ObservableFields {
-    @Observable
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+@FXObservable
+public class FXObservableType {
     private String theString;
-    @Observable
-    private int theNativeInt;
-    @Observable
-    private long theNativeLong;
-    @Observable
-    private float theNativeFloat;
-    @Observable
-    private double theNativeDouble;
-    @Observable
+    private boolean theSimpleBoolean;
+    private char theSimpleChar;
+    private byte theSimpleByte;
+    private short theSimpleShort;
+    private int theSimpleInt;
+    private long theSimpleLong;
+    private float theSimpleFloat;
+    private double theSimpleDouble;
     private Object theObject;
-    @Observable
+    private Boolean theBoolean;
+    private Character theCharacter;
+    private Byte theByte;
+    private Short theShort;
     private Integer theInteger;
-    @Observable
     private Long theLong;
-    @Observable
     private Float theFloat;
-    @Observable
     private Double theDouble;
+    private Map<String, String> theMap;
+    private Set<String> theSet;
+    private List<String> theList;
 }
