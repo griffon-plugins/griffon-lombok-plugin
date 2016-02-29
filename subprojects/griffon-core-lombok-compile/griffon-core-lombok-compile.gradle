@@ -2,10 +2,18 @@ apply plugin: 'java'
 
 apply from: rootProject.file('gradle/code-coverage.gradle')
 
+// begin workaround for https://github.com/rzwitserloot/lombok/issues/1005
+// we cannot just define a dependency on lombok, instead we must unpack the jar,
+// rename all .SCL.lombok files to .class and include these files together with our
+// handlers
+
+// first create a new configuration for the lombok.jar
 configurations {
     lombok
 }
 
+
+// unpack the files, rename the class files
 def unpackedAndRenamedLombokDir = file("$buildDir/lombok")
 
 task unpackAndRenameLombok {
@@ -24,14 +32,25 @@ task unpackAndRenameLombok {
     }
 }
 
-sourceSets {
-    main {
-        output.dir(unpackedAndRenamedLombokDir, builtBy: unpackAndRenameLombok)
+// we have to merge the serviceloader files from lombok with our own files
+def filesToMerge = [
+        "META-INF/services/lombok.eclipse.EclipseAnnotationHandler",
+        "META-INF/services/lombok.javac.JavacAnnotationHandler"
+]
+
+tasks.processResources {
+    dependsOn unpackAndRenameLombok
+    from(unpackedAndRenamedLombokDir) {
+        filesToMerge.each { exclude it }
     }
 }
-
 tasks.compileJava {
     dependsOn unpackAndRenameLombok
+    doLast {
+        filesToMerge.each {
+            new File(destinationDir, it).text += new File(unpackedAndRenamedLombokDir, it).text
+        }
+    }
 }
 
 dependencies {
