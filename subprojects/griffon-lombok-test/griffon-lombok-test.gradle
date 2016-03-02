@@ -1,6 +1,8 @@
 apply plugin: 'java'
 apply plugin: 'groovy'
 
+apply from: rootProject.file('gradle/javafx.gradle')
+
 configurations {
     ecj
 }
