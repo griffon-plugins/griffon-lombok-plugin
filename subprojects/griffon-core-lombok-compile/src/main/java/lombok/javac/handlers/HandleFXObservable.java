@@ -17,8 +17,10 @@ package lombok.javac.handlers;
 
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.tree.JCTree.JCClassDecl;
-import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
+import com.sun.tools.javac.tree.JCTree.*;
+import com.sun.tools.javac.util.List;
+import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Name;
 import griffon.transform.FXObservable;
 import lombok.core.AST.Kind;
 import lombok.core.AnnotationValues;
@@ -39,6 +41,7 @@ import static lombok.javac.handlers.JavacHandlerUtil.*;
 public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
 
     public static final java.util.Map<JavacTreeMaker.TypeTag, String> TYPE_MAP;
+
     static {
         Map<JavacTreeMaker.TypeTag, String> m = new HashMap<JavacTreeMaker.TypeTag, String>();
         m.put(CTC_INT, "Integer");
@@ -53,7 +56,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
     }
 
     @Override
-    public void handle(AnnotationValues<FXObservable> annotation, JCTree.JCAnnotation source, JavacNode annotationNode) {
+    public void handle(AnnotationValues<FXObservable> annotation, JCAnnotation source, JavacNode annotationNode) {
         deleteAnnotationIfNeccessary(annotationNode, FXObservable.class);
         JavacNode node = annotationNode.up();
         if (node == null) return;
@@ -113,17 +116,17 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
 
         // replace field with property
         typeNode.removeChild(fieldNode);
-        JavacNode propertyNode = injectFieldAndMarkGenerated(typeNode, createPropertyField(fieldNode));
+        JavacNode propertyNode = injectFieldAndMarkGenerated(typeNode, createPropertyField(fieldNode, errorNode));
 
-        // injectMethod(typeNode, createPropertyMethod(fieldNode, fieldNode.getTreeMaker(), fieldNode.get()));
+        injectMethod(typeNode, createPropertyMethod(propertyNode, errorNode));
     }
 
-    private JCVariableDecl createPropertyField(JavacNode fieldNode) {
+    private JCVariableDecl createPropertyField(JavacNode fieldNode, JavacNode source) {
         JCVariableDecl field = (JCVariableDecl) fieldNode.get();
 
         String propertyName = fieldNode.getName() + "Property";
         String propertyTypePrefix = null;
-        if (field.vartype instanceof JCTree.JCPrimitiveTypeTree)
+        if (field.vartype instanceof JCPrimitiveTypeTree)
             propertyTypePrefix = TYPE_MAP.get(typeTag(field.vartype));
         String propertyType = null;
         if (propertyTypePrefix != null) {
@@ -132,11 +135,57 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
             propertyType = "javafx.beans.property.ObjectProperty";
         }
         JavacTreeMaker treeMaker = fieldNode.getTreeMaker();
-        return treeMaker.VarDef(
+        JCVariableDecl propertyField = treeMaker.VarDef(
                 treeMaker.Modifiers(Flags.PRIVATE),
                 fieldNode.toName(propertyName),
                 JavacHandlerUtil.chainDotsString(fieldNode, propertyType),
                 null);
+        copyJavadoc(fieldNode, propertyField, CopyJavadoc.VERBATIM);
+        return propertyField;
+    }
+
+    private JCMethodDecl createPropertyMethod(JavacNode fieldNode, JavacNode source) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+
+        JCExpression methodType = field.vartype;
+        // Generate the methodName; lazy will change the field type
+        Name methodName = fieldNode.toName(fieldNode.getName());
+
+        List<JCStatement> statements = createLazyPropertyBody(fieldNode, source);
+
+        JavacTreeMaker treeMaker = fieldNode.getTreeMaker();
+
+        JCBlock methodBody = treeMaker.Block(0, statements);
+
+        List<JCTypeParameter> methodGenericParams = List.nil();
+        List<JCVariableDecl> parameters = List.nil();
+        List<JCExpression> throwsClauses = List.nil();
+        JCExpression annotationMethodDefaultValue = null;
+
+        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
+                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), fieldNode.getContext());
+
+        copyJavadoc(fieldNode, decl, CopyJavadoc.VERBATIM);
+        return decl;
+    }
+
+    public List<JCStatement> createLazyPropertyBody(JavacNode fieldNode, JavacNode source) {
+
+        ListBuffer<JCStatement> statements = new ListBuffer<>();
+
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        JavacTreeMaker maker = fieldNode.getTreeMaker();
+
+        statements.add(
+                // if (fieldProperty == null)
+                maker.If(maker.Binary(CTC_EQUAL, maker.Ident(field.getName()), maker.Literal(CTC_BOT, null)),
+                        // fieldProperty = new ...
+                        maker.Exec(maker.Assign(maker.Ident(field.getName()), maker.Literal(CTC_BOT, null))),
+                        // no else
+                        null));
+        // return fieldProperty
+        statements.append(maker.Return(maker.Ident(field.getName())));
+        return statements.toList();
     }
 
 }
