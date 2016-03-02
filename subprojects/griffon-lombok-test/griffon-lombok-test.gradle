@@ -31,3 +31,18 @@ dependencies {
 //task testEcj(type: Test)
 
 //tasks.check.dependsOn testEcj
+
+task delombok {
+    def srcJava = "src/main/java"
+    def srcDelomboked = "$buildDir/generated-src/main/delombok"
+    inputs.files sourceSets.main.allJava
+    inputs.files sourceSets.main.output
+    outputs.dir file(srcDelomboked)
+
+    doLast {
+        ant.taskdef(name: 'delombok', classname: 'lombok.delombok.ant.Tasks$Delombok', classpath: configurations.compileOnly.asPath)
+        ant.delombok(from: srcJava, to: srcDelomboked, classpath: configurations.compile + sourceSets.main.output)
+    }
+}
+
+tasks.test.dependsOn delombok
