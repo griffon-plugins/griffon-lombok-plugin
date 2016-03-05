@@ -17,6 +17,7 @@ package griffon.transform.lombok;
 
 import griffon.transform.FXObservable;
 
+import java.lang.ref.Reference;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,4 +45,6 @@ public class FXObservableType {
     private Map<String, String> theMap;
     private Set<String> theSet;
     private List<String> theList;
+
+    private Reference<Object> theReference;
 }

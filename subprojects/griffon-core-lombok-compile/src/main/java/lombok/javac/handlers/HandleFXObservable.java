@@ -16,6 +16,7 @@
 package lombok.javac.handlers;
 
 import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.util.List;
@@ -32,27 +33,58 @@ import org.kordamp.jipsy.ServiceProviderFor;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-import static lombok.javac.Javac.*;
-import static lombok.javac.JavacTreeMaker.TypeTag.typeTag;
+import static lombok.javac.Javac.CTC_BOT;
+import static lombok.javac.Javac.CTC_EQUAL;
 import static lombok.javac.handlers.JavacHandlerUtil.*;
 
 @ServiceProviderFor(JavacAnnotationHandler.class)
 public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
 
-    public static final java.util.Map<JavacTreeMaker.TypeTag, String> TYPE_MAP;
+    private static final java.util.Map<String, String> PROPERTY_TYPE_MAP;
+    private static final java.util.Map<String, String> PROPERTY_IMPL_MAP;
 
     static {
-        Map<JavacTreeMaker.TypeTag, String> m = new HashMap<JavacTreeMaker.TypeTag, String>();
-        m.put(CTC_INT, "Integer");
-        m.put(CTC_DOUBLE, "Double");
-        m.put(CTC_FLOAT, "Float");
-        m.put(CTC_SHORT, "Integer");
-        m.put(CTC_BYTE, "Integer");
-        m.put(CTC_LONG, "Long");
-        m.put(CTC_BOOLEAN, "Boolean");
-        m.put(CTC_CHAR, "Integer");
-        TYPE_MAP = Collections.unmodifiableMap(m);
+        Map<String, String> m = new HashMap<>();
+        m.put("boolean", "javafx.beans.property.BooleanProperty");
+        m.put("java.lang.Boolean", "javafx.beans.property.BooleanProperty");
+        m.put("byte", "javafx.beans.property.IntegerProperty");
+        m.put("java.lang.Byte", "javafx.beans.property.IntegerProperty");
+        m.put("short", "javafx.beans.property.IntegerProperty");
+        m.put("java.lang.Short", "javafx.beans.property.IntegerProperty");
+        m.put("int", "javafx.beans.property.IntegerProperty");
+        m.put("java.lang.Integer", "javafx.beans.property.IntegerProperty");
+        m.put("char", "javafx.beans.property.IntegerProperty");
+        m.put("java.lang.Character", "javafx.beans.property.IntegerProperty");
+        m.put("long", "javafx.beans.property.LongProperty");
+        m.put("java.lang.Long", "javafx.beans.property.LongProperty");
+        m.put("float", "javafx.beans.property.FloatProperty");
+        m.put("java.lang.Float", "javafx.beans.property.FloatProperty");
+        m.put("double", "javafx.beans.property.DoubleProperty");
+        m.put("java.lang.Double", "javafx.beans.property.DoubleProperty");
+        m.put("java.lang.String", "javafx.beans.property.StringProperty");
+        PROPERTY_TYPE_MAP = Collections.unmodifiableMap(m);
+
+        m = new HashMap<>();
+        m.put("boolean", "javafx.beans.property.SimpleBooleanProperty");
+        m.put("java.lang.Boolean", "javafx.beans.property.SimpleBooleanProperty");
+        m.put("byte", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("java.lang.Byte", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("short", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("java.lang.Short", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("int", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("java.lang.Integer", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("char", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("java.lang.Character", "javafx.beans.property.SimpleIntegerProperty");
+        m.put("long", "javafx.beans.property.SimpleLongProperty");
+        m.put("java.lang.Long", "javafx.beans.property.SimpleLongProperty");
+        m.put("float", "javafx.beans.property.SimpleFloatProperty");
+        m.put("java.lang.Float", "javafx.beans.property.SimpleFloatProperty");
+        m.put("double", "javafx.beans.property.SimpleDoubleProperty");
+        m.put("java.lang.Double", "javafx.beans.property.SimpleDoubleProperty");
+        m.put("java.lang.String", "javafx.beans.property.SimpleStringProperty");
+        PROPERTY_IMPL_MAP = Collections.unmodifiableMap(m);
     }
 
     @Override
@@ -63,24 +95,21 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
 
         switch (node.getKind()) {
             case TYPE:
+                if ((getModifiers(getTypeDecl(node)) & (Flags.INTERFACE | Flags.ANNOTATION)) != 0) {
+                    addUsageError(annotationNode);
+                    return;
+                }
                 createForType(node, annotationNode);
                 break;
             case FIELD:
+                if (!fieldQualifiesForGeneration(node)) {
+                    addUsageError(annotationNode);
+                    return;
+                }
                 createForField(node, annotationNode);
                 break;
             default:
                 addUsageError(annotationNode);
-        }
-    }
-
-    private void createForType(JavacNode typeNode, JavacNode errorNode) {
-        if ((getModifiers(getTypeDecl(typeNode)) & (Flags.INTERFACE | Flags.ANNOTATION)) != 0) {
-            addUsageError(errorNode);
-            return;
-        }
-        for (JavacNode field : typeNode.down()) {
-            if (fieldQualifiesForGeneration(field) && !hasAnnotation(FXObservable.class, field))
-                createForField(field, errorNode);
         }
     }
 
@@ -104,7 +133,16 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         if (fieldDecl.name.toString().startsWith("$")) return false;
         //Skip static fields.
         if ((fieldDecl.mods.flags & Flags.STATIC) != 0) return false;
+        //Skip final fields.
+        if ((fieldDecl.mods.flags & Flags.FINAL) != 0) return false;
         return true;
+    }
+
+    private void createForType(JavacNode typeNode, JavacNode errorNode) {
+        for (JavacNode field : typeNode.down()) {
+            if (fieldQualifiesForGeneration(field) && !hasAnnotation(FXObservable.class, field))
+                createForField(field, errorNode);
+        }
     }
 
     private void createForField(JavacNode fieldNode, JavacNode errorNode) {
@@ -122,26 +160,63 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
     }
 
     private JCVariableDecl createPropertyField(JavacNode fieldNode, JavacNode source) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-
+        JCExpression propertyType = getPropertyType(fieldNode, source);
         String propertyName = fieldNode.getName() + "Property";
-        String propertyTypePrefix = null;
-        if (field.vartype instanceof JCPrimitiveTypeTree)
-            propertyTypePrefix = TYPE_MAP.get(typeTag(field.vartype));
-        String propertyType = null;
-        if (propertyTypePrefix != null) {
-            propertyType = "javafx.beans.property." + propertyTypePrefix + "Property";
-        } else {
-            propertyType = "javafx.beans.property.ObjectProperty";
-        }
         JavacTreeMaker treeMaker = fieldNode.getTreeMaker();
         JCVariableDecl propertyField = treeMaker.VarDef(
                 treeMaker.Modifiers(Flags.PRIVATE),
                 fieldNode.toName(propertyName),
-                JavacHandlerUtil.chainDotsString(fieldNode, propertyType),
+                propertyType,
                 null);
         copyJavadoc(fieldNode, propertyField, CopyJavadoc.VERBATIM);
         return propertyField;
+    }
+
+    private JCExpression getPropertyType(JavacNode fieldNode, JavacNode errorNode) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        Type type = field.vartype.type;
+        List<Type> typeArguments = type.getTypeArguments();
+        String typeString = typeString(type);
+        String propertyType = PROPERTY_TYPE_MAP.get(typeString);
+        if (propertyType == null) {
+            try {
+                Class typeClass = Class.forName(typeString);
+                if (Map.class.isAssignableFrom(typeClass))
+                    propertyType = "javafx.beans.property.MapProperty";
+                else if (Set.class.isAssignableFrom(typeClass))
+                    propertyType = "javafx.beans.property.SetProperty";
+                else if (java.util.List.class.isAssignableFrom(typeClass))
+                    propertyType = "javafx.beans.property.ListProperty";
+            } catch (ClassNotFoundException e) {
+                // ignore
+            }
+            if (propertyType == null) {
+                propertyType = "javafx.beans.property.ObjectProperty";
+                typeArguments = List.of(type);
+            }
+        }
+        return namePlusTypeArguments(fieldNode, propertyType, typeArguments);
+    }
+
+    private String typeString(Type type) {
+        List<Type> typeArguments = type.getTypeArguments();
+        return type.toString().replace("<" + typeArguments.toString() + ">", "");
+    }
+
+    private JCExpression namePlusTypeArguments(JavacNode fieldNode, String typeString, List<Type> typeArguments) {
+        JavacTreeMaker maker = fieldNode.getTreeMaker();
+
+        JCExpression type = JavacHandlerUtil.chainDotsString(fieldNode, typeString);
+
+        if (typeArguments.isEmpty())
+            return type;
+
+        ListBuffer<JCExpression> typeExpressions = new ListBuffer<>();
+        for (Type typeArgument : typeArguments) {
+            typeExpressions.append(namePlusTypeArguments(fieldNode, typeString(typeArgument), typeArgument.getTypeArguments()));
+        }
+
+        return maker.TypeApply(type, typeExpressions.toList());
     }
 
     private JCMethodDecl createPropertyMethod(JavacNode fieldNode, JavacNode source) {
