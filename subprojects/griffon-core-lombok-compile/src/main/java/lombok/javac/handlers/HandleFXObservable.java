@@ -43,7 +43,6 @@ import static lombok.javac.handlers.JavacHandlerUtil.*;
 public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
 
     private static final java.util.Map<String, String> PROPERTY_TYPE_MAP;
-    private static final java.util.Map<String, String> PROPERTY_IMPL_MAP;
 
     static {
         Map<String, String> m = new HashMap<>();
@@ -65,26 +64,6 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         m.put("java.lang.Double", "javafx.beans.property.DoubleProperty");
         m.put("java.lang.String", "javafx.beans.property.StringProperty");
         PROPERTY_TYPE_MAP = Collections.unmodifiableMap(m);
-
-        m = new HashMap<>();
-        m.put("boolean", "javafx.beans.property.SimpleBooleanProperty");
-        m.put("java.lang.Boolean", "javafx.beans.property.SimpleBooleanProperty");
-        m.put("byte", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("java.lang.Byte", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("short", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("java.lang.Short", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("int", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("java.lang.Integer", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("char", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("java.lang.Character", "javafx.beans.property.SimpleIntegerProperty");
-        m.put("long", "javafx.beans.property.SimpleLongProperty");
-        m.put("java.lang.Long", "javafx.beans.property.SimpleLongProperty");
-        m.put("float", "javafx.beans.property.SimpleFloatProperty");
-        m.put("java.lang.Float", "javafx.beans.property.SimpleFloatProperty");
-        m.put("double", "javafx.beans.property.SimpleDoubleProperty");
-        m.put("java.lang.Double", "javafx.beans.property.SimpleDoubleProperty");
-        m.put("java.lang.String", "javafx.beans.property.SimpleStringProperty");
-        PROPERTY_IMPL_MAP = Collections.unmodifiableMap(m);
     }
 
     @Override
@@ -197,6 +176,22 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         }
         return namePlusTypeArguments(fieldNode, propertyType, typeArguments);
     }
+    private JCExpression getPropertyImpl(JavacNode propertyNode, JavacNode errorNode) {
+        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
+        JCExpression typeExpression = property.vartype;
+        String typeString = typeExpression.toString();
+        List<JCExpression> typeArguments = List.<JCExpression>nil();
+        if (typeExpression instanceof JCTypeApply) {
+            JCTypeApply typeApply = (JCTypeApply)typeExpression;
+            typeString = typeApply.getType().toString();
+            typeArguments = typeApply.getTypeArguments();
+        }
+        String implTypeString = typeString.replaceFirst("(javafx[.]beans[.]property[.])(.*)", "$1Simple$2");
+        JCExpression implType = JavacHandlerUtil.chainDotsString(propertyNode, implTypeString);
+        if (typeArguments.isEmpty())
+            return implType;
+        return propertyNode.getTreeMaker().TypeApply(implType, typeArguments);
+    }
 
     private String typeString(Type type) {
         List<Type> typeArguments = type.getTypeArguments();
@@ -219,16 +214,15 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         return maker.TypeApply(type, typeExpressions.toList());
     }
 
-    private JCMethodDecl createPropertyMethod(JavacNode fieldNode, JavacNode source) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+    private JCMethodDecl createPropertyMethod(JavacNode propertyNode, JavacNode source) {
+        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
 
-        JCExpression methodType = field.vartype;
-        // Generate the methodName; lazy will change the field type
-        Name methodName = fieldNode.toName(fieldNode.getName());
+        JCExpression methodType = property.vartype;
+        Name methodName = propertyNode.toName(propertyNode.getName());
 
-        List<JCStatement> statements = createLazyPropertyBody(fieldNode, source);
+        List<JCStatement> statements = createLazyPropertyBody(propertyNode, source);
 
-        JavacTreeMaker treeMaker = fieldNode.getTreeMaker();
+        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
 
         JCBlock methodBody = treeMaker.Block(0, statements);
 
@@ -238,24 +232,31 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         JCExpression annotationMethodDefaultValue = null;
 
         JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
-                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), fieldNode.getContext());
+                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
 
-        copyJavadoc(fieldNode, decl, CopyJavadoc.VERBATIM);
+        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
         return decl;
     }
 
-    public List<JCStatement> createLazyPropertyBody(JavacNode fieldNode, JavacNode source) {
+    public List<JCStatement> createLazyPropertyBody(JavacNode propertyNode, JavacNode source) {
 
         ListBuffer<JCStatement> statements = new ListBuffer<>();
 
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        JavacTreeMaker maker = fieldNode.getTreeMaker();
+        JCVariableDecl field = (JCVariableDecl) propertyNode.get();
+        JavacTreeMaker maker = propertyNode.getTreeMaker();
+        JCExpression propertyImpl = getPropertyImpl(propertyNode, source);
 
         statements.add(
                 // if (fieldProperty == null)
                 maker.If(maker.Binary(CTC_EQUAL, maker.Ident(field.getName()), maker.Literal(CTC_BOT, null)),
                         // fieldProperty = new ...
-                        maker.Exec(maker.Assign(maker.Ident(field.getName()), maker.Literal(CTC_BOT, null))),
+                        maker.Exec(
+                                maker.Assign(
+                                        maker.Ident(field.getName()),
+                                        maker.NewClass(null, List.<JCExpression>nil(), propertyImpl,
+                                                List.<JCExpression>nil(), null)
+                                )
+                        ),
                         // no else
                         null));
         // return fieldProperty
