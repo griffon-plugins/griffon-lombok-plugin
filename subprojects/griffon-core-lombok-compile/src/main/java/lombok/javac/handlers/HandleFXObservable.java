@@ -136,6 +136,8 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         JavacNode propertyNode = injectFieldAndMarkGenerated(typeNode, createPropertyField(fieldNode, errorNode));
 
         injectMethod(typeNode, createPropertyMethod(propertyNode, errorNode));
+        // injectMethod(typeNode, createConvenienceMethod(propertyNode, JavacHandlerUtil.toGetterName(propertyNode), errorNode));
+        // injectMethod(typeNode, createConvenienceMethod(propertyNode, fieldNode.getName(), errorNode));
     }
 
     private JCVariableDecl createPropertyField(JavacNode fieldNode, JavacNode source) {
@@ -214,6 +216,42 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         return maker.TypeApply(type, typeExpressions.toList());
     }
 
+    private JCMethodDecl createConvenienceMethod(JavacNode propertyNode, String name, JavacNode source) {
+        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
+
+        JCExpression methodType = property.vartype;
+        Name methodName = propertyNode.toName(name);
+
+        List<JCStatement> statements = createConvenienceMethodBody(propertyNode, source);
+
+        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
+        JCBlock methodBody = treeMaker.Block(0, statements);
+
+        List<JCTypeParameter> methodGenericParams = List.nil();
+        List<JCVariableDecl> parameters = List.nil();
+        List<JCExpression> throwsClauses = List.nil();
+        JCExpression annotationMethodDefaultValue = null;
+
+        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
+                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
+
+        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
+        return decl;
+    }
+
+    private List<JCStatement> createConvenienceMethodBody(JavacNode propertyNode, JavacNode source) {
+
+        ListBuffer<JCStatement> statements = new ListBuffer<>();
+        JavacTreeMaker maker = propertyNode.getTreeMaker();
+        JCExpression propertyMethodName = maker.Ident(propertyNode.toName(propertyNode.getName()));
+        statements.add(
+                // just delegate to the property() method
+                // return property()
+                maker.Return(maker.Apply(List.<JCExpression>nil(), propertyMethodName, List.<JCExpression>nil()))
+        );
+        return statements.toList();
+    }
+
     private JCMethodDecl createPropertyMethod(JavacNode propertyNode, JavacNode source) {
         JCVariableDecl property = (JCVariableDecl) propertyNode.get();
 
@@ -238,7 +276,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         return decl;
     }
 
-    public List<JCStatement> createLazyPropertyBody(JavacNode propertyNode, JavacNode source) {
+    private List<JCStatement> createLazyPropertyBody(JavacNode propertyNode, JavacNode source) {
 
         ListBuffer<JCStatement> statements = new ListBuffer<>();
 
