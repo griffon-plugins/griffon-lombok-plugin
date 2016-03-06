@@ -93,7 +93,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
     }
 
     private void addUsageError(JavacNode errorNode) {
-        errorNode.addError("@FXObservable is only supported on a class, an enum, or a field.");
+        errorNode.addError("@FXObservable is only supported on a class, an enum, or a non-final, private field.");
     }
 
     private long getModifiers(JCClassDecl typeDecl) {
@@ -114,6 +114,8 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         if ((fieldDecl.mods.flags & Flags.STATIC) != 0) return false;
         //Skip final fields.
         if ((fieldDecl.mods.flags & Flags.FINAL) != 0) return false;
+        //Skip non-final fields.
+        if ((fieldDecl.mods.flags & Flags.PRIVATE) == 0) return false;
         return true;
     }
 
