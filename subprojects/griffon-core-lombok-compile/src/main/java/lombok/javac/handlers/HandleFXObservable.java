@@ -25,15 +25,13 @@ import com.sun.tools.javac.util.Name;
 import griffon.transform.FXObservable;
 import lombok.core.AST.Kind;
 import lombok.core.AnnotationValues;
+import lombok.javac.Javac;
 import lombok.javac.JavacAnnotationHandler;
 import lombok.javac.JavacNode;
 import lombok.javac.JavacTreeMaker;
 import org.kordamp.jipsy.ServiceProviderFor;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static lombok.javac.Javac.CTC_BOT;
 import static lombok.javac.Javac.CTC_EQUAL;
@@ -127,10 +125,6 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
     }
 
     private void createForField(JavacNode fieldNode, JavacNode errorNode) {
-        if (fieldNode.getKind() != Kind.FIELD) {
-            addUsageError(errorNode);
-            return;
-        }
         JavacNode typeNode = fieldNode.up();
 
         // replace field with property
@@ -140,6 +134,8 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         injectMethod(typeNode, createPropertyMethod(propertyNode, errorNode));
         // injectMethod(typeNode, createConvenienceMethod(propertyNode, JavacHandlerUtil.toGetterName(propertyNode), errorNode));
         // injectMethod(typeNode, createConvenienceMethod(propertyNode, fieldNode.getName(), errorNode));
+
+        injectMethod(typeNode, createGetter(fieldNode, propertyNode, errorNode));
     }
 
     private JCVariableDecl createPropertyField(JavacNode fieldNode, JavacNode source) {
@@ -180,13 +176,14 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         }
         return namePlusTypeArguments(fieldNode, propertyType, typeArguments);
     }
+
     private JCExpression getPropertyImpl(JavacNode propertyNode, JavacNode errorNode) {
         JCVariableDecl property = (JCVariableDecl) propertyNode.get();
         JCExpression typeExpression = property.vartype;
         String typeString = typeExpression.toString();
         List<JCExpression> typeArguments = List.<JCExpression>nil();
         if (typeExpression instanceof JCTypeApply) {
-            JCTypeApply typeApply = (JCTypeApply)typeExpression;
+            JCTypeApply typeApply = (JCTypeApply) typeExpression;
             typeString = typeApply.getType().toString();
             typeArguments = typeApply.getTypeArguments();
         }
@@ -247,8 +244,8 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         JavacTreeMaker maker = propertyNode.getTreeMaker();
         JCExpression propertyMethodName = maker.Ident(propertyNode.toName(propertyNode.getName()));
         statements.add(
-                // just delegate to the property() method
-                // return property()
+                // just delegate to the xProperty() method
+                // return xProperty()
                 maker.Return(maker.Apply(List.<JCExpression>nil(), propertyMethodName, List.<JCExpression>nil()))
         );
         return statements.toList();
@@ -301,6 +298,81 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
                         null));
         // return fieldProperty
         statements.append(maker.Return(maker.Ident(field.getName())));
+        return statements.toList();
+    }
+
+    private JCMethodDecl createGetter(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
+
+        JCExpression methodType = field.vartype;
+        Name methodName = fieldNode.toName(JavacHandlerUtil.toGetterName(fieldNode));
+
+        List<JCStatement> statements = createGetterBody(fieldNode, propertyNode, source);
+
+        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
+        JCBlock methodBody = treeMaker.Block(0, statements);
+
+        List<JCTypeParameter> methodGenericParams = List.nil();
+        List<JCVariableDecl> parameters = List.nil();
+        List<JCExpression> throwsClauses = List.nil();
+        JCExpression annotationMethodDefaultValue = null;
+
+        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
+                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
+
+        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
+        return decl;
+    }
+
+    private List<JCStatement> createGetterBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        String returnType = field.vartype.type.toString();
+        ListBuffer<JCStatement> statements = new ListBuffer<>();
+        JavacTreeMaker maker = propertyNode.getTreeMaker();
+        JCExpression propertyMethod = maker.Ident(propertyNode.toName(propertyNode.getName()));
+        Name getMethodName = propertyNode.toName("get");
+        Name getValueMethodName = propertyNode.toName("getValue");
+        Name valueOfMethodName = propertyNode.toName("valueOf");
+        List<JCExpression> nil = List.<JCExpression>nil();
+        // just delegate to the xProperty() method
+        JCExpression propertyDotGet = maker.Apply(nil, maker.Select(maker.Apply(nil, propertyMethod, nil), getMethodName), nil);
+        JCExpression propertyDotGetValue = maker.Apply(nil, maker.Select(maker.Apply(nil, propertyMethod, nil), getValueMethodName), nil);
+        if (Arrays.asList(
+                "char",
+                "byte",
+                "short"
+        ).contains(returnType)) {
+            // return (char|byte|short)xProperty().get()
+            statements.add(maker.Return(maker.TypeCast(field.vartype, propertyDotGet)));
+        } else if (field.vartype.type.isPrimitive()) {
+            // return xProperty().get()
+            statements.add(maker.Return(propertyDotGet));
+        } else if ("java.lang.Character".equals(returnType)) {
+            // return Character.valueOf((char)xProperty.get());
+            statements.add(maker.Return(
+                    maker.Apply(nil,
+                            maker.Select(field.vartype, valueOfMethodName),
+                            List.<JCExpression>of(maker.TypeCast(maker.TypeIdent(Javac.CTC_CHAR), propertyDotGet))
+                    )));
+        } else if ("java.lang.Byte".equals(returnType)) {
+            // return Byte.valueOf((byte)xProperty.get());
+            statements.add(maker.Return(
+                    maker.Apply(nil,
+                            maker.Select(field.vartype, valueOfMethodName),
+                            List.<JCExpression>of(maker.TypeCast(maker.TypeIdent(Javac.CTC_BYTE), propertyDotGet))
+                    )));
+        } else if ("java.lang.Short".equals(returnType)) {
+            // return Short.valueOf((short)xProperty.get());
+            statements.add(maker.Return(
+                    maker.Apply(nil,
+                            maker.Select(field.vartype, valueOfMethodName),
+                            List.<JCExpression>of(maker.TypeCast(maker.TypeIdent(Javac.CTC_SHORT), propertyDotGet))
+                    )));
+        } else {
+            // return xProperty().getValue()
+            statements.add(maker.Return(propertyDotGetValue));
+        }
         return statements.toList();
     }
 
