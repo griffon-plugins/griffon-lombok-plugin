@@ -136,6 +136,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         // injectMethod(typeNode, createConvenienceMethod(propertyNode, fieldNode.getName(), errorNode));
 
         injectMethod(typeNode, createGetter(fieldNode, propertyNode, errorNode));
+        injectMethod(typeNode, createSetter(fieldNode, propertyNode, errorNode));
     }
 
     private JCVariableDecl createPropertyField(JavacNode fieldNode, JavacNode source) {
@@ -372,6 +373,72 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         } else {
             // return xProperty().getValue()
             statements.add(maker.Return(propertyDotGetValue));
+        }
+        return statements.toList();
+    }
+
+    private JCMethodDecl createSetter(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
+
+        Name methodName = fieldNode.toName(JavacHandlerUtil.toSetterName(fieldNode));
+
+        List<JCStatement> statements = createSetterBody(fieldNode, propertyNode, source);
+
+        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
+        JCExpression methodType = treeMaker.Type(Javac.createVoidType(treeMaker, Javac.CTC_VOID));
+        JCBlock methodBody = treeMaker.Block(0, statements);
+
+        Name paramName = fieldNode.toName("value");
+        List<JCTypeParameter> methodGenericParams = List.nil();
+        List<JCVariableDecl> parameters = List.of(treeMaker.VarDef(treeMaker.Modifiers(Flags.PARAMETER), paramName, field.vartype, null));
+        List<JCExpression> throwsClauses = List.nil();
+        JCExpression annotationMethodDefaultValue = null;
+
+        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
+                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
+
+        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
+        return decl;
+    }
+
+    private List<JCStatement> createSetterBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        String paramType = field.vartype.type.toString();
+        Name paramName = fieldNode.toName("value");
+        ListBuffer<JCStatement> statements = new ListBuffer<>();
+        JavacTreeMaker maker = propertyNode.getTreeMaker();
+        JCExpression paramExpression = maker.Ident(paramName);
+        JCExpression propertyMethod = maker.Ident(propertyNode.toName(propertyNode.getName()));
+        Name setMethodName = propertyNode.toName("set");
+        Name setValueMethodName = propertyNode.toName("setValue");
+        List<JCExpression> nil = List.<JCExpression>nil();
+        // just delegate to the xProperty() method
+        JCExpression propertyDotSetValue = maker.Select(maker.Apply(nil, propertyMethod, nil), setValueMethodName);
+        JCExpression propertyDotSet = maker.Select(maker.Apply(nil, propertyMethod, nil), setMethodName);
+        if (field.vartype.type.isPrimitive()) {
+            // xProperty().set(value)
+            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
+        } else if ("java.lang.Character".equals(paramType)) {
+            // xProperty().set(value != null ? value.charValue() : 0);
+            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
+        } else if ("java.lang.Byte".equals(paramType) ||
+                "java.lang.Short".equals(paramType) ||
+                "java.lang.Integer".equals(paramType)) {
+            // xProperty().set(value != null ? value.intValue() : 0);
+            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
+        } else if ("java.lang.Long".equals(paramType)) {
+            // xProperty().set(value != null ? value.longValue() : 0);
+            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
+        } else if ("java.lang.Float".equals(paramType)) {
+            // xProperty().set(value != null ? value.floatValue() : 0);
+            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
+        } else if ("java.lang.Double".equals(paramType)) {
+            // xProperty().set(value != null ? value.doubleValue() : 0);
+            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
+        } else {
+            // xProperty().setValue(value)
+            statements.add(maker.Exec(maker.Apply(nil, propertyDotSetValue, List.<JCExpression>of(paramExpression))));
         }
         return statements.toList();
     }

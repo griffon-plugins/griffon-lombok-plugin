@@ -16,11 +16,11 @@
 package griffon.transform.lombok;
 
 import griffon.transform.FXObservable;
+import javafx.collections.ObservableList;
+import javafx.collections.ObservableMap;
+import javafx.collections.ObservableSet;
 
 import java.lang.ref.Reference;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class FXObservableFields {
     @FXObservable
@@ -60,11 +60,11 @@ public class FXObservableFields {
     @FXObservable
     private Double theDouble;
     @FXObservable
-    private Map<String, String> theMap;
+    private ObservableMap<String, String> theMap;
     @FXObservable
-    private Set<String> theSet;
+    private ObservableSet<String> theSet;
     @FXObservable
-    private List<String> theList;
+    private ObservableList<String> theList;
 
     @FXObservable
     private Reference<Object> theReference;
