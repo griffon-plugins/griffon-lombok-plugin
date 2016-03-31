@@ -26,6 +26,7 @@ import javafx.beans.property.ObjectProperty
 import javafx.beans.property.SetProperty
 import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.property.StringProperty
+import javafx.collections.FXCollections
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -61,6 +62,61 @@ class FXObservableSpec extends Specification {
         bean.theMapProperty() instanceof MapProperty
         bean.theSetProperty() instanceof SetProperty
         bean.theListProperty() instanceof ListProperty
+
+        where:
+        type               | target
+        FXObservableFields | "member"
+        FXObservableType   | "class"
+    }
+
+    @Unroll
+    def "can call setter and getter"() {
+        when:
+        def bean = type.newInstance()
+        bean.theString = "42"
+        bean.theSimpleBoolean = true
+        bean.theSimpleChar = 42 as char
+        bean.theSimpleByte = 42 as byte
+        bean.theSimpleShort = 42 as short
+        bean.theSimpleInt = 42
+        bean.theSimpleLong = 42
+        bean.theSimpleFloat = 42
+        bean.theSimpleDouble = 42
+        bean.theObject = 42
+        bean.theBoolean = true
+        bean.theCharacter = 42 as Character
+        bean.theByte = 42 as Byte
+        bean.theShort = 42 as Short
+        bean.theInteger = 42
+        bean.theLong = 42
+        bean.theFloat = 42
+        bean.theDouble = 42
+        bean.theMap = FXCollections.observableMap([key: 42])
+        bean.theSet = FXCollections.observableSet(42)
+        bean.theList = FXCollections.observableArrayList(42)
+
+        then:
+        bean.theString == "42"
+        bean.theSimpleBoolean == true
+        bean.theSimpleChar == 42
+        bean.theSimpleByte == 42
+        bean.theSimpleShort == 42
+        bean.theSimpleInt == 42
+        bean.theSimpleLong == 42
+        bean.theSimpleFloat == 42
+        bean.theSimpleDouble == 42
+        bean.theObject == 42
+        bean.theBoolean == true
+        bean.theCharacter == 42
+        bean.theByte == 42
+        bean.theShort == 42
+        bean.theInteger == 42
+        bean.theLong == 42
+        bean.theFloat == 42
+        bean.theDouble == 42
+        bean.theMap == FXCollections.observableMap([key: 42])
+        bean.theSet == FXCollections.observableSet(42)
+        bean.theList == FXCollections.observableArrayList(42)
 
         where:
         type               | target
