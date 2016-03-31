@@ -17,6 +17,9 @@ package griffon.transform.lombok
 
 import javafx.beans.property.*
 import javafx.collections.FXCollections
+import javafx.collections.ObservableList
+import javafx.collections.ObservableMap
+import javafx.collections.ObservableSet
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -27,31 +30,33 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
     @Unroll
     def "Object exposes getters, setters and properties for #property"() {
         expect:
-        propertyType.isInstance(bean."${property}Property"())
+        bean.class.getMethod("${property}Property").getReturnType() == propertyType
+        bean.class.getMethod("${simpleType == boolean.class ? 'is' : 'get'}${property.capitalize()}").getReturnType() == simpleType
+        bean.class.getMethod("set${property.capitalize()}", simpleType).getReturnType() == void
 
         where:
-        property           | propertyType
-        "theString"        | StringProperty
-        "theSimpleBoolean" | BooleanProperty
-        "theSimpleChar"    | IntegerProperty
-        "theSimpleByte"    | IntegerProperty
-        "theSimpleShort"   | IntegerProperty
-        "theSimpleInt"     | IntegerProperty
-        "theSimpleLong"    | LongProperty
-        "theSimpleFloat"   | FloatProperty
-        "theSimpleDouble"  | DoubleProperty
-        "theObject"        | ObjectProperty
-        "theBoolean"       | BooleanProperty
-        "theCharacter"     | IntegerProperty
-        "theByte"          | IntegerProperty
-        "theShort"         | IntegerProperty
-        "theInteger"       | IntegerProperty
-        "theLong"          | LongProperty
-        "theFloat"         | FloatProperty
-        "theDouble"        | DoubleProperty
-        "theMap"           | MapProperty
-        "theSet"           | SetProperty
-        "theList"          | ListProperty
+        property           | propertyType    | simpleType
+        "theString"        | StringProperty  | String
+        "theSimpleBoolean" | BooleanProperty | boolean
+        "theSimpleChar"    | IntegerProperty | char
+        "theSimpleByte"    | IntegerProperty | byte
+        "theSimpleShort"   | IntegerProperty | short
+        "theSimpleInt"     | IntegerProperty | int
+        "theSimpleLong"    | LongProperty    | long
+        "theSimpleFloat"   | FloatProperty   | float
+        "theSimpleDouble"  | DoubleProperty  | double
+        "theObject"        | ObjectProperty  | Object
+        "theBoolean"       | BooleanProperty | Boolean
+        "theCharacter"     | IntegerProperty | Character
+        "theByte"          | IntegerProperty | Byte
+        "theShort"         | IntegerProperty | Short
+        "theInteger"       | IntegerProperty | Integer
+        "theLong"          | LongProperty    | Long
+        "theFloat"         | FloatProperty   | Float
+        "theDouble"        | DoubleProperty  | Double
+        "theMap"           | MapProperty     | ObservableMap
+        "theSet"           | SetProperty     | ObservableSet
+        "theList"          | ListProperty    | ObservableList
     }
 
     @Unroll
