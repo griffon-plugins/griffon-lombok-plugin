@@ -16,6 +16,7 @@
 package griffon.transform.lombok
 
 import javafx.beans.property.*
+import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.collections.ObservableMap
@@ -23,72 +24,141 @@ import javafx.collections.ObservableSet
 import spock.lang.Specification
 import spock.lang.Unroll
 
+import java.lang.reflect.Field
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier
+
 abstract class AbstractFXObservableSpec<T> extends Specification {
+
+    private static List<Map<String, Object>> testData = [
+            [name: "theString", propertyType: StringProperty, simpleType: String, sampleValue: "42"],
+            [name: "theSimpleBoolean", propertyType: BooleanProperty, simpleType: boolean, sampleValue: true],
+            [name: "theSimpleChar", propertyType: IntegerProperty, simpleType: char, sampleValue: 42 as char],
+            [name: "theSimpleByte", propertyType: IntegerProperty, simpleType: byte, sampleValue: 42 as byte],
+            [name: "theSimpleShort", propertyType: IntegerProperty, simpleType: short, sampleValue: 42 as short],
+            [name: "theSimpleInt", propertyType: IntegerProperty, simpleType: int, sampleValue: 42],
+            [name: "theSimpleLong", propertyType: LongProperty, simpleType: long, sampleValue: 42],
+            [name: "theSimpleFloat", propertyType: FloatProperty, simpleType: float, sampleValue: 42],
+            [name: "theSimpleDouble", propertyType: DoubleProperty, simpleType: double, sampleValue: 42],
+            [name: "theObject", propertyType: ObjectProperty, simpleType: Object, sampleValue: 42],
+            [name: "theBoolean", propertyType: BooleanProperty, simpleType: Boolean, sampleValue: true],
+            [name: "theCharacter", propertyType: IntegerProperty, simpleType: Character, sampleValue: 42 as Character],
+            [name: "theByte", propertyType: IntegerProperty, simpleType: Byte, sampleValue: 42 as Byte],
+            [name: "theShort", propertyType: IntegerProperty, simpleType: Short, sampleValue: 42 as Short],
+            [name: "theInteger", propertyType: IntegerProperty, simpleType: Integer, sampleValue: 42],
+            [name: "theLong", propertyType: LongProperty, simpleType: Long, sampleValue: 42],
+            [name: "theFloat", propertyType: FloatProperty, simpleType: Float, sampleValue: 42],
+            [name: "theDouble", propertyType: DoubleProperty, simpleType: Double, sampleValue: 42],
+            [name: "theMap", propertyType: MapProperty, simpleType: ObservableMap, sampleValue: FXCollections.observableMap([key: 42])],
+            [name: "theSet", propertyType: SetProperty, simpleType: ObservableSet, sampleValue: FXCollections.observableSet(42)],
+            [name: "theList", propertyType: ListProperty, simpleType: ObservableList, sampleValue: FXCollections.observableArrayList(42)],
+    ]
 
     T bean
 
     @Unroll
-    def "Object exposes getters, setters and properties for #property"() {
+    def "Object exposes getter for #propertyName"() {
+        given:
+        Method getter = getter(propertyName, simpleType)
+
         expect:
-        bean.class.getMethod("${property}Property").getReturnType() == propertyType
-        bean.class.getMethod("${simpleType == boolean.class ? 'is' : 'get'}${property.capitalize()}").getReturnType() == simpleType
-        bean.class.getMethod("set${property.capitalize()}", simpleType).getReturnType() == void
+        getter.returnType == simpleType
+        getter.modifiers & Modifier.PUBLIC
 
         where:
-        property           | propertyType    | simpleType
-        "theString"        | StringProperty  | String
-        "theSimpleBoolean" | BooleanProperty | boolean
-        "theSimpleChar"    | IntegerProperty | char
-        "theSimpleByte"    | IntegerProperty | byte
-        "theSimpleShort"   | IntegerProperty | short
-        "theSimpleInt"     | IntegerProperty | int
-        "theSimpleLong"    | LongProperty    | long
-        "theSimpleFloat"   | FloatProperty   | float
-        "theSimpleDouble"  | DoubleProperty  | double
-        "theObject"        | ObjectProperty  | Object
-        "theBoolean"       | BooleanProperty | Boolean
-        "theCharacter"     | IntegerProperty | Character
-        "theByte"          | IntegerProperty | Byte
-        "theShort"         | IntegerProperty | Short
-        "theInteger"       | IntegerProperty | Integer
-        "theLong"          | LongProperty    | Long
-        "theFloat"         | FloatProperty   | Float
-        "theDouble"        | DoubleProperty  | Double
-        "theMap"           | MapProperty     | ObservableMap
-        "theSet"           | SetProperty     | ObservableSet
-        "theList"          | ListProperty    | ObservableList
+        propertyName << testData*.name
+        simpleType << testData*.simpleType
     }
 
     @Unroll
-    def "can call setter and getter"() {
-        when:
-        bean."$property" = value
+    def "Object exposes setter for #propertyName"() {
+        given:
+        Method setter = setter(propertyName, simpleType)
 
-        then:
-        bean."$property" == value
+        expect:
+        setter.returnType == void
+        setter.modifiers & Modifier.PUBLIC
 
         where:
-        property           | value
-        "theString"        | "42"
-        "theSimpleBoolean" | true
-        "theSimpleChar"    | 42 as char
-        "theSimpleByte"    | 42 as byte
-        "theSimpleShort"   | 42 as short
-        "theSimpleInt"     | 42
-        "theSimpleLong"    | 42
-        "theSimpleFloat"   | 42
-        "theSimpleDouble"  | 42
-        "theObject"        | 42
-        "theBoolean"       | true
-        "theCharacter"     | 42 as Character
-        "theByte"          | 42 as Byte
-        "theShort"         | 42 as Short
-        "theInteger"       | 42
-        "theLong"          | 42
-        "theFloat"         | 42
-        "theDouble"        | 42
-        "theMap"           | FXCollections.observableMap([key: 42])
-        "theSet"           | FXCollections.observableSet(42)
-        "theList"          | FXCollections.observableArrayList(42)
+        propertyName << testData*.name
+        simpleType << testData*.simpleType
+    }
+
+    @Unroll
+    def "Object exposes property-method for #propertyName"() {
+        given:
+        Method propertyMethod = propertyMethod(propertyName)
+
+        expect:
+        propertyMethod.returnType == propertyType
+        propertyMethod.modifiers & Modifier.PUBLIC
+
+        where:
+        propertyName << testData*.name
+        propertyType << testData*.propertyType
+    }
+
+    @Unroll
+    def "Object has private member for fx property #propertyName"() {
+        given:
+        Field field = propertyField(propertyName)
+
+        expect:
+        field.modifiers & Modifier.PRIVATE
+        field.type == propertyType
+
+        where:
+        propertyName << testData*.name
+        propertyType << testData*.propertyType
+    }
+
+    @Unroll
+    def "Object has private member for simple #propertyName"() {
+        given:
+        Field field = simpleField(propertyName)
+
+        expect:
+        field.modifiers & Modifier.PRIVATE
+        field.type == simpleType
+
+        where:
+        propertyName << testData*.name
+        simpleType << testData*.simpleType
+    }
+
+    @Unroll
+    def "can call setter and getter for #propertyName"() {
+        when:
+        bean."$propertyName" = value
+
+        then:
+        bean."$propertyName" == value
+
+        where:
+        propertyName << testData*.name
+        value << testData*.sampleValue
+    }
+
+    private Method getter(String propertyName, Class<?> simpleType) {
+        String getterName = "${simpleType == boolean.class ? 'is' : 'get'}${propertyName.capitalize()}"
+        bean.class.getMethod(getterName)
+    }
+
+    private Method setter(String propertyName, Class<?> simpleType) {
+        String setterName = "set${propertyName.capitalize()}"
+        Method setterMethod = bean.class.getMethod(setterName, simpleType)
+    }
+
+    private Method propertyMethod(String propertyName) {
+        String propertyMethodName = "${propertyName}Property"
+        bean.class.getMethod(propertyMethodName)
+    }
+
+    private Field propertyField(String propertyName) {
+        bean.class.getDeclaredField("${propertyName}Property")
+    }
+
+    private Field simpleField(String propertyName) {
+        bean.class.getDeclaredField("${propertyName}")
     }
 }
