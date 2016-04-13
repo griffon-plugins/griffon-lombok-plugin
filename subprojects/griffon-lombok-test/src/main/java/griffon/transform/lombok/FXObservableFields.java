@@ -16,11 +16,10 @@
 package griffon.transform.lombok;
 
 import griffon.transform.FXObservable;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 import javafx.collections.ObservableSet;
-
-import java.lang.ref.Reference;
 
 public class FXObservableFields {
     @FXObservable
@@ -60,12 +59,52 @@ public class FXObservableFields {
     @FXObservable
     private Double theDouble;
     @FXObservable
-    private ObservableMap<String, String> theMap;
+    private ObservableMap<String, Integer> theMap;
     @FXObservable
-    private ObservableSet<String> theSet;
+    private ObservableSet<Integer> theSet;
     @FXObservable
-    private ObservableList<String> theList;
+    private ObservableList<Integer> theList;
 
     @FXObservable
-    private Reference<Object> theReference;
+    private String theStringWithDefault = "42";
+    @FXObservable
+    private boolean theSimpleBooleanWithDefault = true;
+    @FXObservable
+    private char theSimpleCharWithDefault = 42;
+    @FXObservable
+    private byte theSimpleByteWithDefault = 42;
+    @FXObservable
+    private short theSimpleShortWithDefault = 42;
+    @FXObservable
+    private int theSimpleIntWithDefault = 42;
+    @FXObservable
+    private long theSimpleLongWithDefault = 42L;
+    @FXObservable
+    private float theSimpleFloatWithDefault = 42f;
+    @FXObservable
+    private double theSimpleDoubleWithDefault = 42d;
+    @FXObservable
+    private Object theObjectWithDefault = 42;
+    @FXObservable
+    private Boolean theBooleanWithDefault = true;
+    @FXObservable
+    private Character theCharacterWithDefault = 42;
+    @FXObservable
+    private Byte theByteWithDefault = 42;
+    @FXObservable
+    private Short theShortWithDefault = 42;
+    @FXObservable
+    private Integer theIntegerWithDefault = 42;
+    @FXObservable
+    private Long theLongWithDefault = 42L;
+    @FXObservable
+    private Float theFloatWithDefault = 42f;
+    @FXObservable
+    private Double theDoubleWithDefault = 42d;
+    @FXObservable
+    private ObservableMap<String, Integer> theMapWithDefault = FXCollections.observableHashMap();
+    @FXObservable
+    private ObservableSet<Integer> theSetWithDefault = FXCollections.observableSet(42);
+    @FXObservable
+    private ObservableList<Integer> theListWithDefault = FXCollections.observableArrayList(42);
 }

@@ -31,7 +31,10 @@ import lombok.javac.JavacNode;
 import lombok.javac.JavacTreeMaker;
 import org.kordamp.jipsy.ServiceProviderFor;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import static lombok.javac.Javac.CTC_BOT;
 import static lombok.javac.Javac.CTC_EQUAL;
@@ -127,11 +130,9 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
     private void createForField(JavacNode fieldNode, JavacNode errorNode) {
         JavacNode typeNode = fieldNode.up();
 
-        // replace field with property
-        typeNode.removeChild(fieldNode);
         JavacNode propertyNode = injectFieldAndMarkGenerated(typeNode, createPropertyField(fieldNode, errorNode));
 
-        injectMethod(typeNode, createPropertyMethod(propertyNode, errorNode));
+        injectMethod(typeNode, createPropertyMethod(fieldNode, propertyNode, errorNode));
         // injectMethod(typeNode, createConvenienceMethod(propertyNode, JavacHandlerUtil.toGetterName(propertyNode), errorNode));
         // injectMethod(typeNode, createConvenienceMethod(propertyNode, fieldNode.getName(), errorNode));
 
@@ -252,13 +253,13 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         return statements.toList();
     }
 
-    private JCMethodDecl createPropertyMethod(JavacNode propertyNode, JavacNode source) {
+    private JCMethodDecl createPropertyMethod(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
         JCVariableDecl property = (JCVariableDecl) propertyNode.get();
 
         JCExpression methodType = property.vartype;
         Name methodName = propertyNode.toName(propertyNode.getName());
 
-        List<JCStatement> statements = createLazyPropertyBody(propertyNode, source);
+        List<JCStatement> statements = createLazyPropertyBody(fieldNode, propertyNode, source);
 
         JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
 
@@ -276,30 +277,137 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         return decl;
     }
 
-    private List<JCStatement> createLazyPropertyBody(JavacNode propertyNode, JavacNode source) {
+    private List<JCStatement> createLazyPropertyBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
 
         ListBuffer<JCStatement> statements = new ListBuffer<>();
 
-        JCVariableDecl field = (JCVariableDecl) propertyNode.get();
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        JCVariableDecl propertyField = (JCVariableDecl) propertyNode.get();
         JavacTreeMaker maker = propertyNode.getTreeMaker();
         JCExpression propertyImpl = getPropertyImpl(propertyNode, source);
-
+        JCExpression defaultValueExpression = setterConversion(fieldNode, maker.Ident(field.getName()));
         statements.add(
                 // if (fieldProperty == null)
-                maker.If(maker.Binary(CTC_EQUAL, maker.Ident(field.getName()), maker.Literal(CTC_BOT, null)),
+                maker.If(isNull(maker, maker.Ident(propertyField.getName())),
                         // fieldProperty = new ...
                         maker.Exec(
                                 maker.Assign(
-                                        maker.Ident(field.getName()),
+                                        maker.Ident(propertyField.getName()),
                                         maker.NewClass(null, List.<JCExpression>nil(), propertyImpl,
-                                                List.<JCExpression>nil(), null)
+                                                List.<JCExpression>of(defaultValueExpression), null)
                                 )
                         ),
                         // no else
                         null));
         // return fieldProperty
-        statements.append(maker.Return(maker.Ident(field.getName())));
+        statements.append(maker.Return(maker.Ident(propertyField.getName())));
         return statements.toList();
+    }
+
+    /**
+     * Create the conversion from simple type to property type. This is used for calling property.set() and
+     * for the lazy creation of the Property.
+     */
+    private JCExpression setterConversion(JavacNode fieldNode, JCExpression value) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        Type type = field.vartype.type;
+        String typeString = type.toString();
+        JavacTreeMaker maker = fieldNode.getTreeMaker();
+        if ("java.lang.Boolean".equals(typeString)) {
+            // value == null ? false : value.booleanValue()
+            return maker.Conditional(
+                    isNull(maker, value),
+                    maker.Literal(Boolean.FALSE),
+                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("booleanValue")), List.<JCExpression>nil())
+            );
+        } else if ("java.lang.Character".equals(typeString)) {
+            // value == null ? 0 : value.charValue()
+            return maker.Conditional(
+                    isNull(maker, value),
+                    maker.TypeCast(maker.TypeIdent(Javac.CTC_CHAR), maker.Literal(Integer.valueOf(0))),
+                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("charValue")), List.<JCExpression>nil())
+            );
+        } else if ("java.lang.Byte".equals(typeString) ||
+                "java.lang.Short".equals(typeString) ||
+                "java.lang.Integer".equals(typeString)) {
+            // value != null ? value.intValue() : 0
+            return maker.Conditional(
+                    isNull(maker, value),
+                    maker.Literal(Integer.valueOf(0)),
+                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("intValue")), List.<JCExpression>nil())
+            );
+        } else if ("java.lang.Long".equals(typeString)) {
+            // value == null ? 0 : value.longValue()
+            return maker.Conditional(
+                    isNull(maker, value),
+                    maker.Literal(Long.valueOf(0)),
+                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("longValue")), List.<JCExpression>nil())
+            );
+        } else if ("java.lang.Float".equals(typeString)) {
+            // value == null ? 0 : value.floatValue()
+            return maker.Conditional(
+                    isNull(maker, value),
+                    maker.Literal(Float.valueOf(0)),
+                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("floatValue")), List.<JCExpression>nil())
+            );
+        } else if ("java.lang.Double".equals(typeString)) {
+            // value == null ? 0 : value.doubleValue()
+            return maker.Conditional(
+                    isNull(maker, value),
+                    maker.Literal(Double.valueOf(0)),
+                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("doubleValue")), List.<JCExpression>nil())
+            );
+        } else {
+            // value
+            return value;
+        }
+    }
+
+    /**
+     * Create the conversion from property type to simple type. This is used when retrieving the value via property.get().
+     */
+    private JCExpression getterConversion(JavacNode fieldNode, JCExpression value) {
+        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
+        Type type = field.vartype.type;
+        String typeString = type.toString();
+        JavacTreeMaker maker = fieldNode.getTreeMaker();
+        JCExpression castToByte = maker.TypeCast(maker.TypeIdent(Javac.CTC_BYTE), value);
+        JCExpression castToChar = maker.TypeCast(maker.TypeIdent(Javac.CTC_CHAR), value);
+        JCExpression castToShort = maker.TypeCast(maker.TypeIdent(Javac.CTC_SHORT), value);
+        JCExpression typeValueOf = JavacHandlerUtil.chainDotsString(fieldNode, typeString + ".valueOf");
+        if ("java.lang.Byte".equals(typeString)) {
+            // Byte.valueOf((byte)value)
+            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(castToByte));
+        } else if ("byte".equals(typeString)) {
+            // (byte)value
+            return castToByte;
+        } else if ("java.lang.Character".equals(typeString)) {
+            // Character.valueOf((char)value)
+            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(castToChar));
+        } else if ("char".equals(typeString)) {
+            // (char)value
+            return castToChar;
+        } else if ("java.lang.Short".equals(typeString)) {
+            // Character.valueOf((short)value)
+            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(castToShort));
+        } else if ("short".equals(typeString)) {
+            // (short)value
+            return castToShort;
+        } else if ("java.lang.Boolean".equals(typeString) ||
+                "java.lang.Integer".equals(typeString) ||
+                "java.lang.Long".equals(typeString) ||
+                "java.lang.Float".equals(typeString) ||
+                "java.lang.Double".equals(typeString)) {
+            // X.valueOf(value)
+            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(value));
+        } else {
+            // value
+            return value;
+        }
+    }
+
+    private JCExpression isNull(JavacTreeMaker maker, JCExpression value) {
+        return maker.Binary(CTC_EQUAL, value, maker.Literal(CTC_BOT, null));
     }
 
     private JCMethodDecl createGetter(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
@@ -328,52 +436,15 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
 
     private List<JCStatement> createGetterBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
         JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        String returnType = field.vartype.type.toString();
+        JCVariableDecl propertyField = (JCVariableDecl) propertyNode.get();
         ListBuffer<JCStatement> statements = new ListBuffer<>();
         JavacTreeMaker maker = propertyNode.getTreeMaker();
-        JCExpression propertyMethod = maker.Ident(propertyNode.toName(propertyNode.getName()));
+        JCExpression fieldAccess = maker.Ident(field.getName());
+        JCExpression propertyFieldAccess = maker.Ident(propertyField.getName());
         Name getMethodName = propertyNode.toName("get");
-        Name getValueMethodName = propertyNode.toName("getValue");
-        Name valueOfMethodName = propertyNode.toName("valueOf");
-        List<JCExpression> nil = List.<JCExpression>nil();
-        // just delegate to the xProperty() method
-        JCExpression propertyDotGet = maker.Apply(nil, maker.Select(maker.Apply(nil, propertyMethod, nil), getMethodName), nil);
-        JCExpression propertyDotGetValue = maker.Apply(nil, maker.Select(maker.Apply(nil, propertyMethod, nil), getValueMethodName), nil);
-        if (Arrays.asList(
-                "char",
-                "byte",
-                "short"
-        ).contains(returnType)) {
-            // return (char|byte|short)xProperty().get()
-            statements.add(maker.Return(maker.TypeCast(field.vartype, propertyDotGet)));
-        } else if (field.vartype.type.isPrimitive()) {
-            // return xProperty().get()
-            statements.add(maker.Return(propertyDotGet));
-        } else if ("java.lang.Character".equals(returnType)) {
-            // return Character.valueOf((char)xProperty.get());
-            statements.add(maker.Return(
-                    maker.Apply(nil,
-                            maker.Select(field.vartype, valueOfMethodName),
-                            List.<JCExpression>of(maker.TypeCast(maker.TypeIdent(Javac.CTC_CHAR), propertyDotGet))
-                    )));
-        } else if ("java.lang.Byte".equals(returnType)) {
-            // return Byte.valueOf((byte)xProperty.get());
-            statements.add(maker.Return(
-                    maker.Apply(nil,
-                            maker.Select(field.vartype, valueOfMethodName),
-                            List.<JCExpression>of(maker.TypeCast(maker.TypeIdent(Javac.CTC_BYTE), propertyDotGet))
-                    )));
-        } else if ("java.lang.Short".equals(returnType)) {
-            // return Short.valueOf((short)xProperty.get());
-            statements.add(maker.Return(
-                    maker.Apply(nil,
-                            maker.Select(field.vartype, valueOfMethodName),
-                            List.<JCExpression>of(maker.TypeCast(maker.TypeIdent(Javac.CTC_SHORT), propertyDotGet))
-                    )));
-        } else {
-            // return xProperty().getValue()
-            statements.add(maker.Return(propertyDotGetValue));
-        }
+        JCExpression propertyDotGet = maker.Apply(List.<JCExpression>nil(), maker.Select(propertyFieldAccess, getMethodName), List.<JCExpression>nil());
+        // return property == null ? field : property.get()
+        statements.add(maker.Return(maker.Conditional(isNull(maker, propertyFieldAccess), fieldAccess, getterConversion(fieldNode, propertyDotGet))));
         return statements.toList();
     }
 
@@ -404,42 +475,16 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
 
     private List<JCStatement> createSetterBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
         JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        String paramType = field.vartype.type.toString();
-        Name paramName = fieldNode.toName("value");
+        JCVariableDecl propertyField = (JCVariableDecl) propertyNode.get();
         ListBuffer<JCStatement> statements = new ListBuffer<>();
         JavacTreeMaker maker = propertyNode.getTreeMaker();
-        JCExpression paramExpression = maker.Ident(paramName);
-        JCExpression propertyMethod = maker.Ident(propertyNode.toName(propertyNode.getName()));
+        JCExpression fieldAccess = maker.Ident(field.getName());
+        JCExpression propertyFieldAccess = maker.Ident(propertyField.getName());
         Name setMethodName = propertyNode.toName("set");
-        Name setValueMethodName = propertyNode.toName("setValue");
-        List<JCExpression> nil = List.<JCExpression>nil();
-        // just delegate to the xProperty() method
-        JCExpression propertyDotSetValue = maker.Select(maker.Apply(nil, propertyMethod, nil), setValueMethodName);
-        JCExpression propertyDotSet = maker.Select(maker.Apply(nil, propertyMethod, nil), setMethodName);
-        if (field.vartype.type.isPrimitive()) {
-            // xProperty().set(value)
-            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
-        } else if ("java.lang.Character".equals(paramType)) {
-            // xProperty().set(value != null ? value.charValue() : 0);
-            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
-        } else if ("java.lang.Byte".equals(paramType) ||
-                "java.lang.Short".equals(paramType) ||
-                "java.lang.Integer".equals(paramType)) {
-            // xProperty().set(value != null ? value.intValue() : 0);
-            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
-        } else if ("java.lang.Long".equals(paramType)) {
-            // xProperty().set(value != null ? value.longValue() : 0);
-            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
-        } else if ("java.lang.Float".equals(paramType)) {
-            // xProperty().set(value != null ? value.floatValue() : 0);
-            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
-        } else if ("java.lang.Double".equals(paramType)) {
-            // xProperty().set(value != null ? value.doubleValue() : 0);
-            statements.add(maker.Exec(maker.Apply(nil, propertyDotSet, List.<JCExpression>of(paramExpression))));
-        } else {
-            // xProperty().setValue(value)
-            statements.add(maker.Exec(maker.Apply(nil, propertyDotSetValue, List.<JCExpression>of(paramExpression))));
-        }
+        JCExpression value = maker.Ident(fieldNode.toName("value"));
+        JCExpression propertyDotSet = maker.Apply(List.<JCExpression>nil(), maker.Select(propertyFieldAccess, setMethodName), List.of(setterConversion(fieldNode, value)));
+        // if (property == null) field = value; else property.set(value);
+        statements.add(maker.If(isNull(maker, propertyFieldAccess), maker.Exec(maker.Assign(fieldAccess, value)), maker.Exec(propertyDotSet)));
         return statements.toList();
     }
 

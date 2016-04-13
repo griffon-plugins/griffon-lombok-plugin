@@ -16,11 +16,10 @@
 package griffon.transform.lombok;
 
 import griffon.transform.FXObservable;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 import javafx.collections.ObservableSet;
-
-import java.lang.ref.Reference;
 
 @FXObservable
 public class FXObservableType {
@@ -42,9 +41,29 @@ public class FXObservableType {
     private Long theLong;
     private Float theFloat;
     private Double theDouble;
-    private ObservableMap<String, String> theMap;
-    private ObservableSet<String> theSet;
-    private ObservableList<String> theList;
+    private ObservableMap<String, Integer> theMap;
+    private ObservableSet<Integer> theSet;
+    private ObservableList<Integer> theList;
 
-    private Reference<Object> theReference;
+    private String theStringWithDefault = "42";
+    private boolean theSimpleBooleanWithDefault = true;
+    private char theSimpleCharWithDefault = 42;
+    private byte theSimpleByteWithDefault = 42;
+    private short theSimpleShortWithDefault = 42;
+    private int theSimpleIntWithDefault = 42;
+    private long theSimpleLongWithDefault = 42L;
+    private float theSimpleFloatWithDefault = 42f;
+    private double theSimpleDoubleWithDefault = 42d;
+    private Object theObjectWithDefault = 42;
+    private Boolean theBooleanWithDefault = true;
+    private Character theCharacterWithDefault = 42;
+    private Byte theByteWithDefault = 42;
+    private Short theShortWithDefault = 42;
+    private Integer theIntegerWithDefault = 42;
+    private Long theLongWithDefault = 42L;
+    private Float theFloatWithDefault = 42f;
+    private Double theDoubleWithDefault = 42d;
+    private ObservableMap<String, Integer> theMapWithDefault = FXCollections.observableHashMap();
+    private ObservableSet<Integer> theSetWithDefault = FXCollections.observableSet(42);
+    private ObservableList<Integer> theListWithDefault = FXCollections.observableArrayList(42);
 }
