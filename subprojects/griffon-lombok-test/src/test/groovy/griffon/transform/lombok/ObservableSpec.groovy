@@ -15,12 +15,14 @@
  */
 package griffon.transform.lombok
 
+import spock.lang.Ignore
 import spock.lang.Specification
 import spock.lang.Unroll
 
 import java.beans.PropertyChangeListener
 import java.lang.reflect.Method
 
+@Ignore("not implemented yet")
 class ObservableSpec extends Specification {
 
     @Unroll
