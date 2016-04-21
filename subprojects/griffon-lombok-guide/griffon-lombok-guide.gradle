@@ -6,7 +6,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.2'
+        classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.3'
         classpath 'com.bmuschko:gradle-java2html-plugin:2.0'
     }
 }
@@ -28,18 +28,18 @@ dependencies {
 task copyDocs(type: Copy) {
     destinationDir = "${buildDir}/sources" as File
     project.ext.childProjects.each { projectName ->
-        if (projectName.endsWith('-compile')) {
-            from(project(projectName).sourceSets.main.allSource) {
-                include 'griffon/transform/**/*'
-                include 'griffon/metadata/**/*'
-            }
-        } else {
+        // if (projectName.endsWith('-compile')) {
+        //     from(project(projectName).sourceSets.main.allSource) {
+        //         include 'griffon/transform/**/*'
+        //         include 'griffon/metadata/**/*'
+        //     }
+        // } else {
             from(project(projectName).sourceSets.main.allSource) {
                 include '**/*.java'
                 include '**/*.groovy'
                 include '**/*.html'
             }
-        }
+        // }
     }
 }
 
