@@ -40,14 +40,14 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
             [name: "theSimpleFloat", propertyType: FloatProperty, simpleType: float, simpleValue: 42, propertyValue: 42f, defaultSimpleValue: 0f, defaultPropertyValue: 0f],
             [name: "theSimpleDouble", propertyType: DoubleProperty, simpleType: double, simpleValue: 42, propertyValue: 42d, defaultSimpleValue: 0d, defaultPropertyValue: 0d],
             [name: "theObject", propertyType: ObjectProperty, simpleType: Object, simpleValue: 42, propertyValue: 42, defaultSimpleValue: null, defaultPropertyValue: null],
-            [name: "theBoolean", propertyType: BooleanProperty, simpleType: Boolean, simpleValue: true, propertyValue: true, defaultSimpleValue: null, defaultPropertyValue: false],
-            [name: "theCharacter", propertyType: IntegerProperty, simpleType: Character, simpleValue: 42 as Character, propertyValue: 42, defaultSimpleValue: null, defaultPropertyValue: 0 as Character],
-            [name: "theByte", propertyType: IntegerProperty, simpleType: Byte, simpleValue: 42 as Byte, propertyValue: 42, defaultSimpleValue: null, defaultPropertyValue: 0 as Byte],
-            [name: "theShort", propertyType: IntegerProperty, simpleType: Short, simpleValue: 42 as Short, propertyValue: 42, defaultSimpleValue: null, defaultPropertyValue: 0 as Short],
-            [name: "theInteger", propertyType: IntegerProperty, simpleType: Integer, simpleValue: 42, propertyValue: 42, defaultSimpleValue: null, defaultPropertyValue: 0],
-            [name: "theLong", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultSimpleValue: null, defaultPropertyValue: 0L],
-            [name: "theFloat", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultSimpleValue: null, defaultPropertyValue: 0f],
-            [name: "theDouble", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultSimpleValue: null, defaultPropertyValue: 0d],
+            [name: "theBoolean", propertyType: BooleanProperty, simpleType: Boolean, simpleValue: true, propertyValue: true, defaultSimpleValue: false, defaultPropertyValue: false],
+            [name: "theCharacter", propertyType: IntegerProperty, simpleType: Character, simpleValue: 42 as Character, propertyValue: 42, defaultSimpleValue: 0 as Character, defaultPropertyValue: 0 as Character],
+            [name: "theByte", propertyType: IntegerProperty, simpleType: Byte, simpleValue: 42 as Byte, propertyValue: 42, defaultSimpleValue: 0 as Byte, defaultPropertyValue: 0 as Byte],
+            [name: "theShort", propertyType: IntegerProperty, simpleType: Short, simpleValue: 42 as Short, propertyValue: 42, defaultSimpleValue: 0 as Short, defaultPropertyValue: 0 as Short],
+            [name: "theInteger", propertyType: IntegerProperty, simpleType: Integer, simpleValue: 42, propertyValue: 42, defaultSimpleValue: 0, defaultPropertyValue: 0],
+            [name: "theLong", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultSimpleValue: 0L, defaultPropertyValue: 0L],
+            [name: "theFloat", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultSimpleValue: 0f, defaultPropertyValue: 0f],
+            [name: "theDouble", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultSimpleValue: 0d, defaultPropertyValue: 0d],
             [name: "theMap", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultSimpleValue: null, defaultPropertyValue: null],
             [name: "theSet", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultSimpleValue: null, defaultPropertyValue: null],
             [name: "theList", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultSimpleValue: null, defaultPropertyValue: null],
@@ -119,31 +119,17 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
     }
 
     @Unroll
-    def "Object has private member for fx property #propertyName"() {
+    def "Object has private member of type Object #propertyName"() {
         given:
-        Field field = propertyField(propertyName)
+        Field field = field(propertyName)
 
         expect:
         field.modifiers & Modifier.PRIVATE
-        field.type == propertyType
+        field.type == Object
 
         where:
         propertyName << testData*.name
         propertyType << testData*.propertyType
-    }
-
-    @Unroll
-    def "Object has private member for simple #propertyName"() {
-        given:
-        Field field = simpleField(propertyName)
-
-        expect:
-        field.modifiers & Modifier.PRIVATE
-        field.type == simpleType
-
-        where:
-        propertyName << testData*.name
-        simpleType << testData*.simpleType
     }
 
     @Unroll
@@ -199,21 +185,42 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
     }
 
     @Unroll
-    def "using only setter and getter does not create a property instance for #propertyName (Shadow Fields Pattern)"() {
+    def "can use getter and setter after property is initialized for #propertyName"() {
         given:
-        Field propertyField = propertyField(propertyName)
-        propertyField.accessible = true
-        Field simpleField = simpleField(propertyName)
-        simpleField.accessible = true
+        Property property = bean."${propertyName}Property"()
 
         expect:
-        propertyField.get(bean) == null
+        property.getValue() == bean."$propertyName"
 
         when:
         bean."$propertyName" = simpleValue
 
         then:
-        propertyField.get(bean) == null
+        property.getValue() == simpleValue
+
+        and:
+        bean."$propertyName" == simpleValue
+
+        where:
+        propertyName << testData*.name
+        defaultPropertyValue << testData*.defaultPropertyValue
+        simpleValue << testData*.simpleValue
+    }
+
+    @Unroll
+    def "using only setter and getter does not create a property instance for #propertyName"() {
+        given:
+        Field field = field(propertyName)
+        field.accessible = true
+
+        expect:
+        !(field.get(bean) instanceof Property)
+
+        when:
+        bean."$propertyName" = simpleValue
+
+        then:
+        !(field.get(bean) instanceof Property)
 
         where:
         propertyName << testData*.name
@@ -235,11 +242,7 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
         bean.class.getMethod(propertyMethodName)
     }
 
-    private Field propertyField(String propertyName) {
-        bean.class.getDeclaredField("${propertyName}Property")
-    }
-
-    private Field simpleField(String propertyName) {
+    private Field field(String propertyName) {
         bean.class.getDeclaredField("${propertyName}")
     }
 }

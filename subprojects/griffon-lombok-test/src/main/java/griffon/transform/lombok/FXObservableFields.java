@@ -84,23 +84,23 @@ public class FXObservableFields {
     @FXObservable
     private double theSimpleDoubleWithDefault = 42d;
     @FXObservable
-    private Object theObjectWithDefault = 42;
+    private Object theObjectWithDefault = Integer.valueOf(42);
     @FXObservable
-    private Boolean theBooleanWithDefault = true;
+    private Boolean theBooleanWithDefault = Boolean.TRUE;
     @FXObservable
-    private Character theCharacterWithDefault = 42;
+    private Character theCharacterWithDefault = Character.valueOf((char) 42);
     @FXObservable
-    private Byte theByteWithDefault = 42;
+    private Byte theByteWithDefault = Byte.valueOf((byte) 42);
     @FXObservable
-    private Short theShortWithDefault = 42;
+    private Short theShortWithDefault = Short.valueOf((short) 42);
     @FXObservable
-    private Integer theIntegerWithDefault = 42;
+    private Integer theIntegerWithDefault = Integer.valueOf(42);
     @FXObservable
-    private Long theLongWithDefault = 42L;
+    private Long theLongWithDefault = Long.valueOf(42);
     @FXObservable
-    private Float theFloatWithDefault = 42f;
+    private Float theFloatWithDefault = Float.valueOf(42);
     @FXObservable
-    private Double theDoubleWithDefault = 42d;
+    private Double theDoubleWithDefault = Double.valueOf(42);
     @FXObservable
     private ObservableMap<String, Integer> theMapWithDefault = FXCollections.observableHashMap();
     @FXObservable

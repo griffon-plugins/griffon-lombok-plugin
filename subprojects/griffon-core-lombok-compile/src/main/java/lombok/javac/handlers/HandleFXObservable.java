@@ -36,8 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static lombok.javac.Javac.CTC_BOT;
-import static lombok.javac.Javac.CTC_EQUAL;
+import static lombok.javac.Javac.*;
 import static lombok.javac.handlers.JavacHandlerUtil.*;
 
 @ServiceProviderFor(JavacAnnotationHandler.class)
@@ -86,7 +85,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
                     addUsageError(annotationNode);
                     return;
                 }
-                createForField(node, annotationNode);
+                new FXObservableFieldHandler(node, annotationNode).handle();
                 break;
             default:
                 addUsageError(annotationNode);
@@ -115,7 +114,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         if ((fieldDecl.mods.flags & Flags.STATIC) != 0) return false;
         //Skip final fields.
         if ((fieldDecl.mods.flags & Flags.FINAL) != 0) return false;
-        //Skip non-final fields.
+        //Skip non-private fields.
         if ((fieldDecl.mods.flags & Flags.PRIVATE) == 0) return false;
         return true;
     }
@@ -123,369 +122,606 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
     private void createForType(JavacNode typeNode, JavacNode errorNode) {
         for (JavacNode field : typeNode.down()) {
             if (fieldQualifiesForGeneration(field) && !hasAnnotation(FXObservable.class, field))
-                createForField(field, errorNode);
+                new FXObservableFieldHandler(field, errorNode).handle();
         }
     }
 
-    private void createForField(JavacNode fieldNode, JavacNode errorNode) {
-        JavacNode typeNode = fieldNode.up();
+    private static class FXObservableFieldHandler {
+        private JavacNode typeNode;
+        private JavacNode fieldNode;
+        private JCVariableDecl field;
+        private JCFieldAccess fieldAccess;
+        private JCExpression type;
+        private JCExpression propertyType;
+        private JavacNode errorNode;
+        private JavacTreeMaker treeMaker;
+        private Name getterName;
 
-        JavacNode propertyNode = injectFieldAndMarkGenerated(typeNode, createPropertyField(fieldNode, errorNode));
+        public FXObservableFieldHandler(JavacNode fieldNode, JavacNode errorNode) {
+            typeNode = fieldNode.up();
+            this.fieldNode = fieldNode;
+            field = (JCVariableDecl) fieldNode.get();
+            this.errorNode = errorNode;
+            treeMaker = fieldNode.getTreeMaker();
+            type = field.vartype;
+            propertyType = getPropertyType();
+            fieldAccess = treeMaker.Select(treeMaker.Ident(fieldNode.toName("this")), field.getName());
+            getterName = fieldNode.toName(JavacHandlerUtil.toGetterName(fieldNode));
+        }
 
-        injectMethod(typeNode, createPropertyMethod(fieldNode, propertyNode, errorNode));
-        // injectMethod(typeNode, createConvenienceMethod(propertyNode, JavacHandlerUtil.toGetterName(propertyNode), errorNode));
-        // injectMethod(typeNode, createConvenienceMethod(propertyNode, fieldNode.getName(), errorNode));
+        public void handle() {
+            field.vartype = genericType("Object", List.<Type>nil());
+            if (field.init != null && type.type.isPrimitive())
+                field.init = setterConversionToField(treeMaker.TypeCast(type, field.init));
+            injectMethod(typeNode, createPropertyMethod());
+            injectMethod(typeNode, createGetter());
+            injectMethod(typeNode, createSetter());
+        }
 
-        injectMethod(typeNode, createGetter(fieldNode, propertyNode, errorNode));
-        injectMethod(typeNode, createSetter(fieldNode, propertyNode, errorNode));
-    }
-
-    private JCVariableDecl createPropertyField(JavacNode fieldNode, JavacNode source) {
-        JCExpression propertyType = getPropertyType(fieldNode, source);
-        String propertyName = fieldNode.getName() + "Property";
-        JavacTreeMaker treeMaker = fieldNode.getTreeMaker();
-        JCVariableDecl propertyField = treeMaker.VarDef(
-                treeMaker.Modifiers(Flags.PRIVATE),
-                fieldNode.toName(propertyName),
-                propertyType,
-                null);
-        copyJavadoc(fieldNode, propertyField, CopyJavadoc.VERBATIM);
-        return propertyField;
-    }
-
-    private JCExpression getPropertyType(JavacNode fieldNode, JavacNode errorNode) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        Type type = field.vartype.type;
-        List<Type> typeArguments = type.getTypeArguments();
-        String typeString = typeString(type);
-        String propertyType = PROPERTY_TYPE_MAP.get(typeString);
-        if (propertyType == null) {
-            try {
-                Class typeClass = Class.forName(typeString);
-                if (Map.class.isAssignableFrom(typeClass))
-                    propertyType = "javafx.beans.property.MapProperty";
-                else if (Set.class.isAssignableFrom(typeClass))
-                    propertyType = "javafx.beans.property.SetProperty";
-                else if (java.util.List.class.isAssignableFrom(typeClass))
-                    propertyType = "javafx.beans.property.ListProperty";
-            } catch (ClassNotFoundException e) {
-                // ignore
-            }
+        private JCExpression getPropertyType() {
+            List<Type> typeArguments = type.type.getTypeArguments();
+            String rawType = rawTypeString(type.type);
+            String propertyType = PROPERTY_TYPE_MAP.get(rawType);
             if (propertyType == null) {
-                propertyType = "javafx.beans.property.ObjectProperty";
-                typeArguments = List.of(type);
+                try {
+                    Class typeClass = Class.forName(rawType);
+                    if (Map.class.isAssignableFrom(typeClass))
+                        propertyType = "javafx.beans.property.MapProperty";
+                    else if (Set.class.isAssignableFrom(typeClass))
+                        propertyType = "javafx.beans.property.SetProperty";
+                    else if (java.util.List.class.isAssignableFrom(typeClass))
+                        propertyType = "javafx.beans.property.ListProperty";
+                } catch (ClassNotFoundException e) {
+                    // ignore
+                }
+                if (propertyType == null) {
+                    propertyType = "javafx.beans.property.ObjectProperty";
+                    typeArguments = List.of(type.type);
+                }
+            }
+            return genericType(propertyType, typeArguments);
+        }
+
+        private JCExpression getPropertyImpl() {
+            String rawType = rawTypeString(propertyType);
+            List<JCExpression> typeArguments = typeArguments(propertyType);
+            String implTypeString = rawType.replaceFirst("(javafx[.]beans[.]property[.])(.*)", "$1Simple$2");
+            JCExpression implType = JavacHandlerUtil.chainDotsString(fieldNode, implTypeString);
+            if (typeArguments.isEmpty())
+                return implType;
+            return treeMaker.TypeApply(implType, typeArguments);
+        }
+
+        private JCExpression genericType(String rawType, List<Type> typeArguments) {
+            JCExpression type = JavacHandlerUtil.chainDotsString(fieldNode, rawType);
+
+            if (typeArguments.isEmpty())
+                return type;
+
+            ListBuffer<JCExpression> typeExpressions = new ListBuffer<>();
+            for (Type typeArgument : typeArguments) {
+                typeExpressions.append(genericType(rawTypeString(typeArgument), typeArgument.getTypeArguments()));
+            }
+
+            return treeMaker.TypeApply(type, typeExpressions.toList());
+        }
+
+        private JCExpression rawType(JCExpression type) {
+            if (type instanceof JCTypeApply)
+                return ((JCTypeApply) type).clazz;
+            return type;
+        }
+
+        private String rawTypeString(JCExpression type) {
+            return rawType(type).toString();
+        }
+
+        private String rawTypeString(Type type) {
+            List<Type> typeArguments = type.getTypeArguments();
+            return type.toString().replace("<" + typeArguments.toString() + ">", "");
+        }
+
+        private List<JCExpression> typeArguments(JCExpression type) {
+            if (type instanceof JCTypeApply)
+                return ((JCTypeApply) type).getTypeArguments();
+            return List.<JCExpression>nil();
+        }
+
+        private JCMethodDecl createPropertyMethod() {
+            Name methodName = fieldNode.toName(fieldNode.getName() + "Property");
+
+            List<JCStatement> statements = createPropertyMethodBody();
+
+            JCBlock methodBody = treeMaker.Block(0, statements);
+
+            List<JCTypeParameter> methodGenericParams = List.nil();
+            List<JCVariableDecl> parameters = List.nil();
+            List<JCExpression> throwsClauses = List.nil();
+            JCExpression annotationMethodDefaultValue = null;
+
+            JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, propertyType,
+                    methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), fieldNode.get(), fieldNode.getContext());
+
+            copyJavadoc(fieldNode, decl, CopyJavadoc.VERBATIM);
+            return decl;
+        }
+
+        private List<JCStatement> createPropertyMethodBody() {
+
+            ListBuffer<JCStatement> statements = new ListBuffer<>();
+
+            JCExpression propertyImpl = getPropertyImpl();
+            statements.add(
+                    // if (!(field instanceof Property))
+                    treeMaker.If(treeMaker.Unary(CTC_NOT, treeMaker.TypeTest(fieldAccess, rawType(propertyType))),
+                            // field = new ...
+                            treeMaker.Exec(
+                                    treeMaker.Assign(
+                                            fieldAccess,
+                                            treeMaker.NewClass(
+                                                    null,
+                                                    List.<JCExpression>nil(),
+                                                    propertyImpl,
+                                                    List.<JCExpression>of(
+                                                            treeMaker.Ident(fieldNode.toName("this")),
+                                                            treeMaker.Literal(field.getName().toString()),
+                                                            convertFieldValueForPropertyCreation()
+                                                    ),
+                                                    null
+                                            )
+                                    )
+                            ),
+                            // no else
+                            null));
+            // return fieldProperty
+            statements.append(treeMaker.Return(treeMaker.TypeCast(propertyType, fieldAccess)));
+            return statements.toList();
+        }
+
+        private JCMethodDecl createGetter() {
+            List<JCStatement> statements = createGetterBody();
+
+            JCBlock methodBody = treeMaker.Block(0, statements);
+
+
+            JCMethodDecl decl = recursiveSetGeneratedBy(
+                    treeMaker.MethodDef(
+                            treeMaker.Modifiers(Flags.PUBLIC),
+                            getterName,
+                            type,
+                            List.<JCTypeParameter>nil(),
+                            List.<JCVariableDecl>nil(),
+                            List.<JCExpression>nil(),
+                            methodBody,
+                            null),
+                    fieldNode.get(),
+                    fieldNode.getContext()
+            );
+
+            copyJavadoc(fieldNode, decl, CopyJavadoc.VERBATIM);
+            return decl;
+        }
+
+        private List<JCStatement> createGetterBody() {
+            ListBuffer<JCStatement> statements = new ListBuffer<>();
+            Name getMethodName = fieldNode.toName("get");
+            JCExpression propertyDotGet = treeMaker.Apply(
+                    List.<JCExpression>nil(),
+                    treeMaker.Select(treeMaker.TypeCast(propertyType, fieldAccess), getMethodName),
+                    List.<JCExpression>nil()
+            );
+            JCExpression convertedPropertyValue = getterConversionFromProperty(propertyDotGet);
+            JCExpression convertedFieldValue = getterConversionFromField();
+            // return value instanceof XProperty ? ((XProperty)name).get() : (X) name;
+            statements.add(
+                    treeMaker.Return(
+                            treeMaker.Conditional(
+                                    treeMaker.TypeTest(fieldAccess, rawType(propertyType)),
+                                    convertedPropertyValue,
+                                    convertedFieldValue
+                            )
+                    )
+            );
+            return statements.toList();
+        }
+
+        private JCMethodDecl createSetter() {
+            Name methodName = fieldNode.toName(JavacHandlerUtil.toSetterName(fieldNode));
+
+            List<JCStatement> statements = createSetterBody();
+
+            JCExpression methodType = treeMaker.Type(Javac.createVoidType(treeMaker, Javac.CTC_VOID));
+            JCBlock methodBody = treeMaker.Block(0, statements);
+
+            Name paramName = field.getName();
+            List<JCTypeParameter> methodGenericParams = List.nil();
+            List<JCVariableDecl> parameters = List.of(
+                    treeMaker.VarDef(
+                            treeMaker.Modifiers(Flags.PARAMETER),
+                            paramName,
+                            type,
+                            null
+                    )
+            );
+            List<JCExpression> throwsClauses = List.nil();
+            JCExpression annotationMethodDefaultValue = null;
+
+            JCMethodDecl decl = recursiveSetGeneratedBy(
+                    treeMaker.MethodDef(
+                            treeMaker.Modifiers(Flags.PUBLIC),
+                            methodName,
+                            methodType,
+                            methodGenericParams,
+                            parameters,
+                            throwsClauses,
+                            methodBody,
+                            annotationMethodDefaultValue
+                    ),
+                    fieldNode.get(), fieldNode.getContext());
+
+            copyJavadoc(fieldNode, decl, CopyJavadoc.VERBATIM);
+            return decl;
+        }
+
+        private List<JCStatement> createSetterBody() {
+            ListBuffer<JCStatement> statements = new ListBuffer<>();
+            Name setMethodName = fieldNode.toName("set");
+            JCExpression value = treeMaker.Ident(field.getName());
+            JCExpression convertedValue = setterConversionToProperty(value);
+
+            JCExpression propertyDotSet = treeMaker.Apply(
+                    List.<JCExpression>nil(),
+                    treeMaker.Select(treeMaker.TypeCast(propertyType, fieldAccess), setMethodName),
+                    List.of(convertedValue));
+            statements.add(
+                    treeMaker.If(
+                            // if (this.value instanceof XProperty)
+                            treeMaker.TypeTest(fieldAccess, rawType(propertyType)),
+                            // ((StringProperty)this.value).set(value);
+                            treeMaker.Exec(propertyDotSet),
+                            // else this.value = value;
+                            treeMaker.Exec(
+                                    treeMaker.Assign(fieldAccess, setterConversionToField(value))
+                            )
+                    ));
+            return statements.toList();
+        }
+
+
+        /**
+         * Create the conversion from simple type to property type. This is used for calling property.set().
+         */
+        private JCExpression setterConversionToProperty(JCExpression value) {
+            String rawType = rawTypeString(type.type);
+            if ("java.lang.Boolean".equals(rawType)) {
+                // value == null ? false : ((Boolean) value).booleanValue()
+                return treeMaker.Conditional(
+                        isNull(value),
+                        treeMaker.Literal(Boolean.FALSE),
+                        call(valueAs(value, "Boolean"), "booleanValue")
+                );
+            } else if ("java.lang.Character".equals(rawType)) {
+                // value == null ? 0 : (int) ((Character) value).charValue()
+                return treeMaker.Conditional(
+                        isNull(value),
+                        treeMaker.Literal(Integer.valueOf(0)),
+                        treeMaker.TypeCast(
+                                treeMaker.TypeIdent(CTC_INT),
+                                call(valueAs(value, "Character"), "charValue")
+                        )
+                );
+            } else if ("java.lang.Byte".equals(rawType) ||
+                    "java.lang.Short".equals(rawType) ||
+                    "java.lang.Integer".equals(rawType)) {
+                // value == null ? 0 : (Number) value).intValue()
+                return treeMaker.Conditional(
+                        isNull(value),
+                        treeMaker.Literal(Integer.valueOf(0)),
+                        call(valueAs(value, "Number"), "intValue")
+                );
+            } else if ("java.lang.Long".equals(rawType)) {
+                // value == null ? 0L : (Number) value).longValue()
+                return treeMaker.Conditional(
+                        isNull(value),
+                        treeMaker.Literal(Long.valueOf(0)),
+                        call(valueAs(value, "Number"), "longValue")
+                );
+            } else if ("java.lang.Float".equals(rawType)) {
+                // value == null ? 0f : ((Number) value).floatValue()
+                return treeMaker.Conditional(
+                        isNull(value),
+                        treeMaker.Literal(Float.valueOf(0)),
+                        call(valueAs(value, "Number"), "floatValue")
+                );
+            } else if ("java.lang.Double".equals(rawType)) {
+                // value == null ? 0 : ((Number) value).doubleValue()
+                return treeMaker.Conditional(
+                        isNull(value),
+                        treeMaker.Literal(Double.valueOf(0)),
+                        call(valueAs(value, "Number"), "doubleValue")
+                );
+            } else if ("byte".equals(rawType) ||
+                    "char".equals(rawType) ||
+                    "short".equals(rawType)) {
+                // (int) value
+                return treeMaker.TypeCast(treeMaker.TypeIdent(CTC_INT), value);
+            } else {
+                // value
+                return value;
             }
         }
-        return namePlusTypeArguments(fieldNode, propertyType, typeArguments);
-    }
 
-    private JCExpression getPropertyImpl(JavacNode propertyNode, JavacNode errorNode) {
-        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
-        JCExpression typeExpression = property.vartype;
-        String typeString = typeExpression.toString();
-        List<JCExpression> typeArguments = List.<JCExpression>nil();
-        if (typeExpression instanceof JCTypeApply) {
-            JCTypeApply typeApply = (JCTypeApply) typeExpression;
-            typeString = typeApply.getType().toString();
-            typeArguments = typeApply.getTypeArguments();
+        /**
+         * Create the conversion from property type to getter type. This is used when retrieving the value via property.get().
+         */
+        private JCExpression getterConversionFromProperty(JCExpression value) {
+            String rawType = rawTypeString(type.type);
+            JCExpression castToByte = cast(Javac.CTC_BYTE, value);
+            JCExpression castToChar = cast(Javac.CTC_CHAR, value);
+            JCExpression castToShort = cast(Javac.CTC_SHORT, value);
+            if ("java.lang.Byte".equals(rawType)) {
+                // Byte.valueOf((byte)value)
+                return valueOf(rawType, castToByte);
+            } else if ("byte".equals(rawType)) {
+                // (byte)value
+                return castToByte;
+            } else if ("java.lang.Character".equals(rawType)) {
+                // Character.valueOf((char)value)
+                return valueOf(rawType, castToChar);
+            } else if ("char".equals(rawType)) {
+                // (char)value
+                return castToChar;
+            } else if ("java.lang.Short".equals(rawType)) {
+                // Short.valueOf((short)value)
+                return valueOf(rawType, castToShort);
+            } else if ("short".equals(rawType)) {
+                // (short)value
+                return castToShort;
+            } else if ("java.lang.Boolean".equals(rawType) ||
+                    "java.lang.Integer".equals(rawType) ||
+                    "java.lang.Long".equals(rawType) ||
+                    "java.lang.Float".equals(rawType) ||
+                    "java.lang.Double".equals(rawType)) {
+                // X.valueOf(value)
+                return valueOf(rawType, value);
+            } else {
+                // value
+                return value;
+            }
         }
-        String implTypeString = typeString.replaceFirst("(javafx[.]beans[.]property[.])(.*)", "$1Simple$2");
-        JCExpression implType = JavacHandlerUtil.chainDotsString(propertyNode, implTypeString);
-        if (typeArguments.isEmpty())
-            return implType;
-        return propertyNode.getTreeMaker().TypeApply(implType, typeArguments);
-    }
 
-    private String typeString(Type type) {
-        List<Type> typeArguments = type.getTypeArguments();
-        return type.toString().replace("<" + typeArguments.toString() + ">", "");
-    }
-
-    private JCExpression namePlusTypeArguments(JavacNode fieldNode, String typeString, List<Type> typeArguments) {
-        JavacTreeMaker maker = fieldNode.getTreeMaker();
-
-        JCExpression type = JavacHandlerUtil.chainDotsString(fieldNode, typeString);
-
-        if (typeArguments.isEmpty())
-            return type;
-
-        ListBuffer<JCExpression> typeExpressions = new ListBuffer<>();
-        for (Type typeArgument : typeArguments) {
-            typeExpressions.append(namePlusTypeArguments(fieldNode, typeString(typeArgument), typeArgument.getTypeArguments()));
+        /**
+         * Create the conversion from Object to Property rawType. This is used for the lazy initialization of the property.
+         */
+        private JCExpression convertFieldValueForPropertyCreation() {
+            String rawType = rawTypeString(type.type);
+            if ("java.lang.Boolean".equals(rawType) || "boolean".equals(rawType)) {
+                // value == null ? false : ((Boolean)value).booleanValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Boolean.FALSE),
+                        call(fieldAs("Boolean"), "booleanValue")
+                );
+            } else if ("java.lang.Character".equals(rawType) || "char".equals(rawType)) {
+                // value == null ? 0 : (int) ((Character)value).charValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Integer.valueOf(0)),
+                        treeMaker.TypeCast(
+                                treeMaker.TypeIdent(CTC_INT),
+                                call(fieldAs("Character"), "charValue")
+                        )
+                );
+            } else if ("java.lang.Byte".equals(rawType) || "byte".equals(rawType)
+                    || "java.lang.Short".equals(rawType) || "short".equals(rawType)
+                    || "java.lang.Integer".equals(rawType) || "int".equals(rawType)) {
+                // value == null ? 0 : ((Number)value).intValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Integer.valueOf(0)),
+                        call(fieldAs("Number"), "intValue")
+                );
+            } else if ("java.lang.Long".equals(rawType) || "long".equals(rawType)) {
+                // value == null ? 0L : ((Number)value).longValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Long.valueOf(0)),
+                        call(fieldAs("Number"), "longValue")
+                );
+            } else if ("java.lang.Float".equals(rawType) || "float".equals(rawType)) {
+                // value == null ? 0f : ((Number)value).floatValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Float.valueOf(0)),
+                        call(fieldAs("Number"), "floatValue")
+                );
+            } else if ("java.lang.Double".equals(rawType) || "double".equals(rawType)) {
+                // value == null ? 0d : ((Number)value).doubleValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Double.valueOf(0)),
+                        call(fieldAs("Number"), "doubleValue")
+                );
+            } else {
+                // (Type)value
+                return treeMaker.TypeCast(type, fieldAccess);
+            }
         }
 
-        return maker.TypeApply(type, typeExpressions.toList());
-    }
+        /**
+         * Create the conversion from Object to getter type. This is used for the getter when no property is used.
+         */
+        private JCExpression getterConversionFromField() {
+            String rawType = rawTypeString(type.type);
+            if ("java.lang.Boolean".equals(rawType)) {
+                // value == null ? Boolean.FALSE : (Boolean)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, treeMaker.Literal(Boolean.FALSE)),
+                        fieldAs("Boolean")
+                );
+            } else if ("boolean".equals(rawType)) {
+                // value == null ? false : ((Boolean)value).booleanValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Boolean.FALSE),
+                        call(fieldAs("Boolean"), "booleanValue")
+                );
+            } else if ("java.lang.Character".equals(rawType)) {
+                // value == null ? Character.valueOf(0) : (Character)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, cast(CTC_CHAR, treeMaker.Literal(Integer.valueOf(0)))),
+                        fieldAs("Character")
+                );
+            } else if ("char".equals(rawType)) {
+                // value == null ? (char)0 : ((Character)value).charValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        cast(CTC_CHAR, treeMaker.Literal(Integer.valueOf(0))),
+                        call(fieldAs("Character"), "charValue")
+                );
+            } else if ("java.lang.Byte".equals(rawType)) {
+                // value == null ? Byte.valueOf(0) : (Byte)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, cast(CTC_BYTE, treeMaker.Literal(Integer.valueOf(0)))),
+                        fieldAs("Byte")
+                );
+            } else if ("byte".equals(rawType)) {
+                // value == null ? (byte)0 : ((Byte)value).byteValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        cast(CTC_BYTE, treeMaker.Literal(Integer.valueOf(0))),
+                        call(fieldAs("Byte"), "byteValue")
+                );
+            } else if ("java.lang.Short".equals(rawType)) {
+                // value == null ? Short.valueOf(0) : (Short)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, cast(CTC_SHORT, treeMaker.Literal(Integer.valueOf(0)))),
+                        fieldAs("Short")
+                );
+            } else if ("short".equals(rawType)) {
+                // value == null ? (short)0 : ((Short)value).shortValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        cast(CTC_SHORT, treeMaker.Literal(Integer.valueOf(0))),
+                        call(fieldAs("Short"), "shortValue")
+                );
+            } else if ("java.lang.Integer".equals(rawType)) {
+                // value == null ? Integer.valueOf(0) : (Integer)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, treeMaker.Literal(Integer.valueOf(0))),
+                        fieldAs("Integer")
+                );
+            } else if ("int".equals(rawType)) {
+                // value == null ? (int)0 : ((Integer)value).intValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Integer.valueOf(0)),
+                        call(fieldAs("Integer"), "intValue")
+                );
+            } else if ("java.lang.Long".equals(rawType)) {
+                // value == null ? Long.valueOf(0) : (Long)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, treeMaker.Literal(Long.valueOf(0))),
+                        fieldAs("Long")
+                );
+            } else if ("long".equals(rawType)) {
+                // value == null ? (long)0 : ((Long)value).longValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Long.valueOf(0)),
+                        call(fieldAs("Long"), "longValue")
+                );
+            } else if ("java.lang.Float".equals(rawType)) {
+                // value == null ? Float.valueOf(0) : (Float)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, treeMaker.Literal(Float.valueOf(0))),
+                        fieldAs("Float")
+                );
+            } else if ("float".equals(rawType)) {
+                // value == null ? (float)0 : ((Float)value).floatValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Float.valueOf(0)),
+                        call(fieldAs("Float"), "floatValue")
+                );
+            } else if ("java.lang.Double".equals(rawType)) {
+                // value == null ? Double.valueOf(0) : (Double)value
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        valueOf(rawType, treeMaker.Literal(Double.valueOf(0))),
+                        fieldAs("Double")
+                );
+            } else if ("double".equals(rawType)) {
+                // value == null ? (double)0 : ((Double)value).doubleValue()
+                return treeMaker.Conditional(
+                        isNull(fieldAccess),
+                        treeMaker.Literal(Double.valueOf(0)),
+                        call(fieldAs("Double"), "doubleValue")
+                );
+            } else {
+                // (Type)value
+                return treeMaker.TypeCast(type, fieldAccess);
+            }
+        }
 
-    private JCMethodDecl createConvenienceMethod(JavacNode propertyNode, String name, JavacNode source) {
-        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
-
-        JCExpression methodType = property.vartype;
-        Name methodName = propertyNode.toName(name);
-
-        List<JCStatement> statements = createConvenienceMethodBody(propertyNode, source);
-
-        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
-        JCBlock methodBody = treeMaker.Block(0, statements);
-
-        List<JCTypeParameter> methodGenericParams = List.nil();
-        List<JCVariableDecl> parameters = List.nil();
-        List<JCExpression> throwsClauses = List.nil();
-        JCExpression annotationMethodDefaultValue = null;
-
-        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
-                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
-
-        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
-        return decl;
-    }
-
-    private List<JCStatement> createConvenienceMethodBody(JavacNode propertyNode, JavacNode source) {
-
-        ListBuffer<JCStatement> statements = new ListBuffer<>();
-        JavacTreeMaker maker = propertyNode.getTreeMaker();
-        JCExpression propertyMethodName = maker.Ident(propertyNode.toName(propertyNode.getName()));
-        statements.add(
-                // just delegate to the xProperty() method
-                // return xProperty()
-                maker.Return(maker.Apply(List.<JCExpression>nil(), propertyMethodName, List.<JCExpression>nil()))
-        );
-        return statements.toList();
-    }
-
-    private JCMethodDecl createPropertyMethod(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
-        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
-
-        JCExpression methodType = property.vartype;
-        Name methodName = propertyNode.toName(propertyNode.getName());
-
-        List<JCStatement> statements = createLazyPropertyBody(fieldNode, propertyNode, source);
-
-        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
-
-        JCBlock methodBody = treeMaker.Block(0, statements);
-
-        List<JCTypeParameter> methodGenericParams = List.nil();
-        List<JCVariableDecl> parameters = List.nil();
-        List<JCExpression> throwsClauses = List.nil();
-        JCExpression annotationMethodDefaultValue = null;
-
-        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
-                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
-
-        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
-        return decl;
-    }
-
-    private List<JCStatement> createLazyPropertyBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
-
-        ListBuffer<JCStatement> statements = new ListBuffer<>();
-
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        JCVariableDecl propertyField = (JCVariableDecl) propertyNode.get();
-        JavacTreeMaker maker = propertyNode.getTreeMaker();
-        JCExpression propertyImpl = getPropertyImpl(propertyNode, source);
-        JCExpression defaultValueExpression = setterConversion(fieldNode, maker.Ident(field.getName()));
-        statements.add(
-                // if (fieldProperty == null)
-                maker.If(isNull(maker, maker.Ident(propertyField.getName())),
-                        // fieldProperty = new ...
-                        maker.Exec(
-                                maker.Assign(
-                                        maker.Ident(propertyField.getName()),
-                                        maker.NewClass(null, List.<JCExpression>nil(), propertyImpl,
-                                                List.<JCExpression>of(defaultValueExpression), null)
-                                )
-                        ),
-                        // no else
-                        null));
-        // return fieldProperty
-        statements.append(maker.Return(maker.Ident(propertyField.getName())));
-        return statements.toList();
-    }
-
-    /**
-     * Create the conversion from simple type to property type. This is used for calling property.set() and
-     * for the lazy creation of the Property.
-     */
-    private JCExpression setterConversion(JavacNode fieldNode, JCExpression value) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        Type type = field.vartype.type;
-        String typeString = type.toString();
-        JavacTreeMaker maker = fieldNode.getTreeMaker();
-        if ("java.lang.Boolean".equals(typeString)) {
-            // value == null ? false : value.booleanValue()
-            return maker.Conditional(
-                    isNull(maker, value),
-                    maker.Literal(Boolean.FALSE),
-                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("booleanValue")), List.<JCExpression>nil())
-            );
-        } else if ("java.lang.Character".equals(typeString)) {
-            // value == null ? 0 : value.charValue()
-            return maker.Conditional(
-                    isNull(maker, value),
-                    maker.TypeCast(maker.TypeIdent(Javac.CTC_CHAR), maker.Literal(Integer.valueOf(0))),
-                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("charValue")), List.<JCExpression>nil())
-            );
-        } else if ("java.lang.Byte".equals(typeString) ||
-                "java.lang.Short".equals(typeString) ||
-                "java.lang.Integer".equals(typeString)) {
-            // value != null ? value.intValue() : 0
-            return maker.Conditional(
-                    isNull(maker, value),
-                    maker.Literal(Integer.valueOf(0)),
-                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("intValue")), List.<JCExpression>nil())
-            );
-        } else if ("java.lang.Long".equals(typeString)) {
-            // value == null ? 0 : value.longValue()
-            return maker.Conditional(
-                    isNull(maker, value),
-                    maker.Literal(Long.valueOf(0)),
-                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("longValue")), List.<JCExpression>nil())
-            );
-        } else if ("java.lang.Float".equals(typeString)) {
-            // value == null ? 0 : value.floatValue()
-            return maker.Conditional(
-                    isNull(maker, value),
-                    maker.Literal(Float.valueOf(0)),
-                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("floatValue")), List.<JCExpression>nil())
-            );
-        } else if ("java.lang.Double".equals(typeString)) {
-            // value == null ? 0 : value.doubleValue()
-            return maker.Conditional(
-                    isNull(maker, value),
-                    maker.Literal(Double.valueOf(0)),
-                    maker.Apply(List.<JCExpression>nil(), maker.Select(value, fieldNode.toName("doubleValue")), List.<JCExpression>nil())
-            );
-        } else {
-            // value
+        /**
+         * Create the conversion from setter type to Object. This is used for the setter when no property is used.
+         */
+        private JCExpression setterConversionToField(JCExpression value) {
+            String rawType = rawTypeString(type.type);
+            if ("boolean".equals(rawType))
+                return valueOf("Boolean", value);
+            if ("byte".equals(rawType))
+                return valueOf("Byte", value);
+            if ("char".equals(rawType))
+                return valueOf("Character", value);
+            if ("short".equals(rawType))
+                return valueOf("Short", value);
+            if ("int".equals(rawType))
+                return valueOf("Integer", value);
+            if ("long".equals(rawType))
+                return valueOf("Long", value);
+            if ("float".equals(rawType))
+                return valueOf("Float", value);
+            if ("double".equals(rawType))
+                return valueOf("Double", value);
             return value;
         }
-    }
 
-    /**
-     * Create the conversion from property type to simple type. This is used when retrieving the value via property.get().
-     */
-    private JCExpression getterConversion(JavacNode fieldNode, JCExpression value) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        Type type = field.vartype.type;
-        String typeString = type.toString();
-        JavacTreeMaker maker = fieldNode.getTreeMaker();
-        JCExpression castToByte = maker.TypeCast(maker.TypeIdent(Javac.CTC_BYTE), value);
-        JCExpression castToChar = maker.TypeCast(maker.TypeIdent(Javac.CTC_CHAR), value);
-        JCExpression castToShort = maker.TypeCast(maker.TypeIdent(Javac.CTC_SHORT), value);
-        JCExpression typeValueOf = JavacHandlerUtil.chainDotsString(fieldNode, typeString + ".valueOf");
-        if ("java.lang.Byte".equals(typeString)) {
-            // Byte.valueOf((byte)value)
-            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(castToByte));
-        } else if ("byte".equals(typeString)) {
-            // (byte)value
-            return castToByte;
-        } else if ("java.lang.Character".equals(typeString)) {
-            // Character.valueOf((char)value)
-            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(castToChar));
-        } else if ("char".equals(typeString)) {
-            // (char)value
-            return castToChar;
-        } else if ("java.lang.Short".equals(typeString)) {
-            // Character.valueOf((short)value)
-            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(castToShort));
-        } else if ("short".equals(typeString)) {
-            // (short)value
-            return castToShort;
-        } else if ("java.lang.Boolean".equals(typeString) ||
-                "java.lang.Integer".equals(typeString) ||
-                "java.lang.Long".equals(typeString) ||
-                "java.lang.Float".equals(typeString) ||
-                "java.lang.Double".equals(typeString)) {
-            // X.valueOf(value)
-            return maker.Apply(List.<JCExpression>nil(), typeValueOf, List.of(value));
-        } else {
-            // value
-            return value;
+        private JCExpression valueOf(String type, JCExpression value) {
+            return treeMaker.Apply(List.<JCExpression>nil(),
+                    JavacHandlerUtil.chainDotsString(fieldNode, type + ".valueOf"),
+                    List.of(value)
+            );
         }
-    }
 
-    private JCExpression isNull(JavacTreeMaker maker, JCExpression value) {
-        return maker.Binary(CTC_EQUAL, value, maker.Literal(CTC_BOT, null));
-    }
+        private JCExpression fieldAs(String type) {
+            return valueAs(fieldAccess, type);
+        }
 
-    private JCMethodDecl createGetter(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
+        private JCExpression valueAs(JCExpression value, String type) {
+            return treeMaker.TypeCast(genericType(type, List.<Type>nil()), value);
+        }
 
-        JCExpression methodType = field.vartype;
-        Name methodName = fieldNode.toName(JavacHandlerUtil.toGetterName(fieldNode));
+        private JCExpression cast(JavacTreeMaker.TypeTag type, JCExpression value) {
+            return treeMaker.TypeCast(treeMaker.TypeIdent(type), value);
+        }
 
-        List<JCStatement> statements = createGetterBody(fieldNode, propertyNode, source);
+        private JCExpression call(JCExpression value, String method) {
+            return treeMaker.Apply(List.<JCExpression>nil(), treeMaker.Select(value, fieldNode.toName(method)), List.<JCExpression>nil());
+        }
 
-        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
-        JCBlock methodBody = treeMaker.Block(0, statements);
+        private JCExpression isNull(JCExpression value) {
+            return treeMaker.Binary(CTC_EQUAL, value, treeMaker.Literal(CTC_BOT, null));
+        }
 
-        List<JCTypeParameter> methodGenericParams = List.nil();
-        List<JCVariableDecl> parameters = List.nil();
-        List<JCExpression> throwsClauses = List.nil();
-        JCExpression annotationMethodDefaultValue = null;
-
-        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
-                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
-
-        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
-        return decl;
-    }
-
-    private List<JCStatement> createGetterBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        JCVariableDecl propertyField = (JCVariableDecl) propertyNode.get();
-        ListBuffer<JCStatement> statements = new ListBuffer<>();
-        JavacTreeMaker maker = propertyNode.getTreeMaker();
-        JCExpression fieldAccess = maker.Ident(field.getName());
-        JCExpression propertyFieldAccess = maker.Ident(propertyField.getName());
-        Name getMethodName = propertyNode.toName("get");
-        JCExpression propertyDotGet = maker.Apply(List.<JCExpression>nil(), maker.Select(propertyFieldAccess, getMethodName), List.<JCExpression>nil());
-        // return property == null ? field : property.get()
-        statements.add(maker.Return(maker.Conditional(isNull(maker, propertyFieldAccess), fieldAccess, getterConversion(fieldNode, propertyDotGet))));
-        return statements.toList();
-    }
-
-    private JCMethodDecl createSetter(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        JCVariableDecl property = (JCVariableDecl) propertyNode.get();
-
-        Name methodName = fieldNode.toName(JavacHandlerUtil.toSetterName(fieldNode));
-
-        List<JCStatement> statements = createSetterBody(fieldNode, propertyNode, source);
-
-        JavacTreeMaker treeMaker = propertyNode.getTreeMaker();
-        JCExpression methodType = treeMaker.Type(Javac.createVoidType(treeMaker, Javac.CTC_VOID));
-        JCBlock methodBody = treeMaker.Block(0, statements);
-
-        Name paramName = fieldNode.toName("value");
-        List<JCTypeParameter> methodGenericParams = List.nil();
-        List<JCVariableDecl> parameters = List.of(treeMaker.VarDef(treeMaker.Modifiers(Flags.PARAMETER), paramName, field.vartype, null));
-        List<JCExpression> throwsClauses = List.nil();
-        JCExpression annotationMethodDefaultValue = null;
-
-        JCMethodDecl decl = recursiveSetGeneratedBy(treeMaker.MethodDef(treeMaker.Modifiers(Flags.PUBLIC), methodName, methodType,
-                methodGenericParams, parameters, throwsClauses, methodBody, annotationMethodDefaultValue), source.get(), propertyNode.getContext());
-
-        copyJavadoc(propertyNode, decl, CopyJavadoc.VERBATIM);
-        return decl;
-    }
-
-    private List<JCStatement> createSetterBody(JavacNode fieldNode, JavacNode propertyNode, JavacNode source) {
-        JCVariableDecl field = (JCVariableDecl) fieldNode.get();
-        JCVariableDecl propertyField = (JCVariableDecl) propertyNode.get();
-        ListBuffer<JCStatement> statements = new ListBuffer<>();
-        JavacTreeMaker maker = propertyNode.getTreeMaker();
-        JCExpression fieldAccess = maker.Ident(field.getName());
-        JCExpression propertyFieldAccess = maker.Ident(propertyField.getName());
-        Name setMethodName = propertyNode.toName("set");
-        JCExpression value = maker.Ident(fieldNode.toName("value"));
-        JCExpression propertyDotSet = maker.Apply(List.<JCExpression>nil(), maker.Select(propertyFieldAccess, setMethodName), List.of(setterConversion(fieldNode, value)));
-        // if (property == null) field = value; else property.set(value);
-        statements.add(maker.If(isNull(maker, propertyFieldAccess), maker.Exec(maker.Assign(fieldAccess, value)), maker.Exec(propertyDotSet)));
-        return statements.toList();
     }
 
 }
