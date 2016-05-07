@@ -251,6 +251,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
             ListBuffer<JCStatement> statements = new ListBuffer<>();
 
             JCExpression propertyImpl = getPropertyImpl();
+            JCExpression callGetter = treeMaker.Apply(List.<JCExpression>nil(), treeMaker.Ident(getterName), List.<JCExpression>nil());
             statements.add(
                     // if (!(field instanceof Property))
                     treeMaker.If(treeMaker.Unary(CTC_NOT, treeMaker.TypeTest(fieldAccess, rawType(propertyType))),
@@ -265,7 +266,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
                                                     List.<JCExpression>of(
                                                             treeMaker.Ident(fieldNode.toName("this")),
                                                             treeMaker.Literal(field.getName().toString()),
-                                                            convertFieldValueForPropertyCreation()
+                                                            setterConversionToProperty(callGetter)
                                                     ),
                                                     null
                                             )
@@ -487,64 +488,6 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
             } else {
                 // value
                 return value;
-            }
-        }
-
-        /**
-         * Create the conversion from Object to Property rawType. This is used for the lazy initialization of the property.
-         */
-        private JCExpression convertFieldValueForPropertyCreation() {
-            String rawType = rawTypeString(type.type);
-            if ("java.lang.Boolean".equals(rawType) || "boolean".equals(rawType)) {
-                // value == null ? false : ((Boolean)value).booleanValue()
-                return treeMaker.Conditional(
-                        isNull(fieldAccess),
-                        treeMaker.Literal(Boolean.FALSE),
-                        call(fieldAs("Boolean"), "booleanValue")
-                );
-            } else if ("java.lang.Character".equals(rawType) || "char".equals(rawType)) {
-                // value == null ? 0 : (int) ((Character)value).charValue()
-                return treeMaker.Conditional(
-                        isNull(fieldAccess),
-                        treeMaker.Literal(Integer.valueOf(0)),
-                        treeMaker.TypeCast(
-                                treeMaker.TypeIdent(CTC_INT),
-                                call(fieldAs("Character"), "charValue")
-                        )
-                );
-            } else if ("java.lang.Byte".equals(rawType) || "byte".equals(rawType)
-                    || "java.lang.Short".equals(rawType) || "short".equals(rawType)
-                    || "java.lang.Integer".equals(rawType) || "int".equals(rawType)) {
-                // value == null ? 0 : ((Number)value).intValue()
-                return treeMaker.Conditional(
-                        isNull(fieldAccess),
-                        treeMaker.Literal(Integer.valueOf(0)),
-                        call(fieldAs("Number"), "intValue")
-                );
-            } else if ("java.lang.Long".equals(rawType) || "long".equals(rawType)) {
-                // value == null ? 0L : ((Number)value).longValue()
-                return treeMaker.Conditional(
-                        isNull(fieldAccess),
-                        treeMaker.Literal(Long.valueOf(0)),
-                        call(fieldAs("Number"), "longValue")
-                );
-            } else if ("java.lang.Float".equals(rawType) || "float".equals(rawType)) {
-                // value == null ? 0f : ((Number)value).floatValue()
-                return treeMaker.Conditional(
-                        isNull(fieldAccess),
-                        treeMaker.Literal(Float.valueOf(0)),
-                        call(fieldAs("Number"), "floatValue")
-                );
-            } else if ("java.lang.Double".equals(rawType) || "double".equals(rawType)) {
-                // value == null ? 0d : ((Number)value).doubleValue()
-                return treeMaker.Conditional(
-                        isNull(fieldAccess),
-                        treeMaker.Literal(Double.valueOf(0)),
-                        call(fieldAs("Number"), "doubleValue")
-                );
-            } else {
-                // (Type)value
-                return treeMaker.TypeCast(type, fieldAccess);
             }
         }
 
