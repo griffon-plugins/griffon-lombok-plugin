@@ -30,49 +30,49 @@ import java.lang.reflect.Modifier
 abstract class AbstractFXObservableSpec<T> extends Specification {
 
     private static List<Map<String, Object>> testData = [
-            [name: "theString", propertyType: StringProperty, simpleType: String, simpleValue: "42", propertyValue: "42", defaultSimpleValue: null, defaultPropertyValue: null],
-            [name: "theSimpleBoolean", propertyType: BooleanProperty, simpleType: boolean, simpleValue: true, propertyValue: true, defaultSimpleValue: false, defaultPropertyValue: false],
-            [name: "theSimpleChar", propertyType: IntegerProperty, simpleType: char, simpleValue: 42 as char, propertyValue: 42, defaultSimpleValue: 0 as char, defaultPropertyValue: 0 as char],
-            [name: "theSimpleByte", propertyType: IntegerProperty, simpleType: byte, simpleValue: 42 as byte, propertyValue: 42, defaultSimpleValue: 0 as byte, defaultPropertyValue: 0 as byte],
-            [name: "theSimpleShort", propertyType: IntegerProperty, simpleType: short, simpleValue: 42 as short, propertyValue: 42, defaultSimpleValue: 0 as short, defaultPropertyValue: 0 as short],
-            [name: "theSimpleInt", propertyType: IntegerProperty, simpleType: int, simpleValue: 42, propertyValue: 42, defaultSimpleValue: 0, defaultPropertyValue: 0],
-            [name: "theSimpleLong", propertyType: LongProperty, simpleType: long, simpleValue: 42, propertyValue: 42L, , defaultSimpleValue: 0L, defaultPropertyValue: 0L],
-            [name: "theSimpleFloat", propertyType: FloatProperty, simpleType: float, simpleValue: 42, propertyValue: 42f, defaultSimpleValue: 0f, defaultPropertyValue: 0f],
-            [name: "theSimpleDouble", propertyType: DoubleProperty, simpleType: double, simpleValue: 42, propertyValue: 42d, defaultSimpleValue: 0d, defaultPropertyValue: 0d],
-            [name: "theObject", propertyType: ObjectProperty, simpleType: Object, simpleValue: 42, propertyValue: 42, defaultSimpleValue: null, defaultPropertyValue: null],
-            [name: "theBoolean", propertyType: BooleanProperty, simpleType: Boolean, simpleValue: true, propertyValue: true, defaultSimpleValue: false, defaultPropertyValue: false],
-            [name: "theCharacter", propertyType: IntegerProperty, simpleType: Character, simpleValue: 42 as Character, propertyValue: 42, defaultSimpleValue: 0 as Character, defaultPropertyValue: 0 as Character],
-            [name: "theByte", propertyType: IntegerProperty, simpleType: Byte, simpleValue: 42 as Byte, propertyValue: 42, defaultSimpleValue: 0 as Byte, defaultPropertyValue: 0 as Byte],
-            [name: "theShort", propertyType: IntegerProperty, simpleType: Short, simpleValue: 42 as Short, propertyValue: 42, defaultSimpleValue: 0 as Short, defaultPropertyValue: 0 as Short],
-            [name: "theInteger", propertyType: IntegerProperty, simpleType: Integer, simpleValue: 42, propertyValue: 42, defaultSimpleValue: 0, defaultPropertyValue: 0],
-            [name: "theLong", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultSimpleValue: 0L, defaultPropertyValue: 0L],
-            [name: "theFloat", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultSimpleValue: 0f, defaultPropertyValue: 0f],
-            [name: "theDouble", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultSimpleValue: 0d, defaultPropertyValue: 0d],
-            [name: "theMap", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultSimpleValue: null, defaultPropertyValue: null],
-            [name: "theSet", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultSimpleValue: null, defaultPropertyValue: null],
-            [name: "theList", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultSimpleValue: null, defaultPropertyValue: null],
+            [name: "theString", propertyType: StringProperty, simpleType: String, simpleValue: "42", propertyValue: "42", defaultValue: null],
+            [name: "theSimpleBoolean", propertyType: BooleanProperty, simpleType: boolean, simpleValue: true, propertyValue: true, defaultValue: false],
+            [name: "theSimpleChar", propertyType: IntegerProperty, simpleType: char, simpleValue: 42 as char, propertyValue: 42, defaultValue: 0 as char],
+            [name: "theSimpleByte", propertyType: IntegerProperty, simpleType: byte, simpleValue: 42 as byte, propertyValue: 42, defaultValue: 0 as byte],
+            [name: "theSimpleShort", propertyType: IntegerProperty, simpleType: short, simpleValue: 42 as short, propertyValue: 42, defaultValue: 0 as short],
+            [name: "theSimpleInt", propertyType: IntegerProperty, simpleType: int, simpleValue: 42, propertyValue: 42, defaultValue: 0],
+            [name: "theSimpleLong", propertyType: LongProperty, simpleType: long, simpleValue: 42, propertyValue: 42L, , defaultValue: 0L],
+            [name: "theSimpleFloat", propertyType: FloatProperty, simpleType: float, simpleValue: 42, propertyValue: 42f, defaultValue: 0f],
+            [name: "theSimpleDouble", propertyType: DoubleProperty, simpleType: double, simpleValue: 42, propertyValue: 42d, defaultValue: 0d],
+            [name: "theObject", propertyType: ObjectProperty, simpleType: Object, simpleValue: 42, propertyValue: 42, defaultValue: null],
+            [name: "theBoolean", propertyType: BooleanProperty, simpleType: Boolean, simpleValue: true, propertyValue: true, defaultValue: false],
+            [name: "theCharacter", propertyType: IntegerProperty, simpleType: Character, simpleValue: 42 as Character, propertyValue: 42, defaultValue: 0 as Character],
+            [name: "theByte", propertyType: IntegerProperty, simpleType: Byte, simpleValue: 42 as Byte, propertyValue: 42, defaultValue: 0 as Byte],
+            [name: "theShort", propertyType: IntegerProperty, simpleType: Short, simpleValue: 42 as Short, propertyValue: 42, defaultValue: 0 as Short],
+            [name: "theInteger", propertyType: IntegerProperty, simpleType: Integer, simpleValue: 42, propertyValue: 42, defaultValue: 0],
+            [name: "theLong", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultValue: 0L],
+            [name: "theFloat", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultValue: 0f],
+            [name: "theDouble", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultValue: 0d],
+            [name: "theMap", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultValue: null],
+            [name: "theSet", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultValue: null],
+            [name: "theList", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultValue: null],
 
-            [name: "theStringWithDefault", propertyType: StringProperty, simpleType: String, simpleValue: "42", propertyValue: "42", defaultSimpleValue: "42", defaultPropertyValue: "42"],
-            [name: "theSimpleBooleanWithDefault", propertyType: BooleanProperty, simpleType: boolean, simpleValue: true, propertyValue: true, defaultSimpleValue: true, defaultPropertyValue: true],
-            [name: "theSimpleCharWithDefault", propertyType: IntegerProperty, simpleType: char, simpleValue: 42 as char, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theSimpleByteWithDefault", propertyType: IntegerProperty, simpleType: byte, simpleValue: 42 as byte, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theSimpleShortWithDefault", propertyType: IntegerProperty, simpleType: short, simpleValue: 42 as short, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theSimpleIntWithDefault", propertyType: IntegerProperty, simpleType: int, simpleValue: 42, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theSimpleLongWithDefault", propertyType: LongProperty, simpleType: long, simpleValue: 42, propertyValue: 42L, defaultSimpleValue: 42L, defaultPropertyValue: 42L],
-            [name: "theSimpleFloatWithDefault", propertyType: FloatProperty, simpleType: float, simpleValue: 42, propertyValue: 42f, defaultSimpleValue: 42f, defaultPropertyValue: 42f],
-            [name: "theSimpleDoubleWithDefault", propertyType: DoubleProperty, simpleType: double, simpleValue: 42, propertyValue: 42d, defaultSimpleValue: 42d, defaultPropertyValue: 42d],
-            [name: "theObjectWithDefault", propertyType: ObjectProperty, simpleType: Object, simpleValue: 42, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theBooleanWithDefault", propertyType: BooleanProperty, simpleType: Boolean, simpleValue: true, propertyValue: true, defaultSimpleValue: true, defaultPropertyValue: true],
-            [name: "theCharacterWithDefault", propertyType: IntegerProperty, simpleType: Character, simpleValue: 42 as Character, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theByteWithDefault", propertyType: IntegerProperty, simpleType: Byte, simpleValue: 42 as Byte, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theShortWithDefault", propertyType: IntegerProperty, simpleType: Short, simpleValue: 42 as Short, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theIntegerWithDefault", propertyType: IntegerProperty, simpleType: Integer, simpleValue: 42, propertyValue: 42, defaultSimpleValue: 42, defaultPropertyValue: 42],
-            [name: "theLongWithDefault", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultSimpleValue: 42L, defaultPropertyValue: 42],
-            [name: "theFloatWithDefault", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultSimpleValue: 42f, defaultPropertyValue: 42f],
-            [name: "theDoubleWithDefault", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultSimpleValue: 42d, defaultPropertyValue: 42d],
-            [name: "theMapWithDefault", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultSimpleValue: FXCollections.observableHashMap(), defaultPropertyValue: FXCollections.observableHashMap()],
-            [name: "theSetWithDefault", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultSimpleValue: FXCollections.observableSet(42), defaultPropertyValue: FXCollections.observableSet(42)],
-            [name: "theListWithDefault", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultSimpleValue: FXCollections.observableArrayList(42), defaultPropertyValue: FXCollections.observableArrayList(42)],
+            [name: "theStringWithDefault", propertyType: StringProperty, simpleType: String, simpleValue: "42", propertyValue: "42", defaultValue: "42"],
+            [name: "theSimpleBooleanWithDefault", propertyType: BooleanProperty, simpleType: boolean, simpleValue: true, propertyValue: true, defaultValue: true],
+            [name: "theSimpleCharWithDefault", propertyType: IntegerProperty, simpleType: char, simpleValue: 42 as char, propertyValue: 42, defaultValue: 42],
+            [name: "theSimpleByteWithDefault", propertyType: IntegerProperty, simpleType: byte, simpleValue: 42 as byte, propertyValue: 42, defaultValue: 42],
+            [name: "theSimpleShortWithDefault", propertyType: IntegerProperty, simpleType: short, simpleValue: 42 as short, propertyValue: 42, defaultValue: 42],
+            [name: "theSimpleIntWithDefault", propertyType: IntegerProperty, simpleType: int, simpleValue: 42, propertyValue: 42, defaultValue: 42],
+            [name: "theSimpleLongWithDefault", propertyType: LongProperty, simpleType: long, simpleValue: 42, propertyValue: 42L, defaultValue: 42L],
+            [name: "theSimpleFloatWithDefault", propertyType: FloatProperty, simpleType: float, simpleValue: 42, propertyValue: 42f, defaultValue: 42f],
+            [name: "theSimpleDoubleWithDefault", propertyType: DoubleProperty, simpleType: double, simpleValue: 42, propertyValue: 42d, defaultValue: 42d],
+            [name: "theObjectWithDefault", propertyType: ObjectProperty, simpleType: Object, simpleValue: 42, propertyValue: 42, defaultValue: 42],
+            [name: "theBooleanWithDefault", propertyType: BooleanProperty, simpleType: Boolean, simpleValue: true, propertyValue: true, defaultValue: true],
+            [name: "theCharacterWithDefault", propertyType: IntegerProperty, simpleType: Character, simpleValue: 42 as Character, propertyValue: 42, defaultValue: 42],
+            [name: "theByteWithDefault", propertyType: IntegerProperty, simpleType: Byte, simpleValue: 42 as Byte, propertyValue: 42, defaultValue: 42],
+            [name: "theShortWithDefault", propertyType: IntegerProperty, simpleType: Short, simpleValue: 42 as Short, propertyValue: 42, defaultValue: 42],
+            [name: "theIntegerWithDefault", propertyType: IntegerProperty, simpleType: Integer, simpleValue: 42, propertyValue: 42, defaultValue: 42],
+            [name: "theLongWithDefault", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultValue: 42L],
+            [name: "theFloatWithDefault", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultValue: 42f],
+            [name: "theDoubleWithDefault", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultValue: 42d],
+            [name: "theMapWithDefault", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultValue: FXCollections.observableHashMap()],
+            [name: "theSetWithDefault", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultValue: FXCollections.observableSet(42)],
+            [name: "theListWithDefault", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultValue: FXCollections.observableArrayList(42)],
     ]
 
     T bean
@@ -148,11 +148,11 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
     @Unroll
     def "getter for #propertyName returns the default value after instantiation"() {
         expect:
-        bean."$propertyName" == defaultSimpleValue
+        bean."$propertyName" == defaultValue
 
         where:
         propertyName << testData*.name
-        defaultSimpleValue << testData*.defaultSimpleValue
+        defaultValue << testData*.defaultValue
     }
 
     @Unroll
@@ -177,11 +177,11 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
         Property property = bean."${propertyName}Property"()
 
         expect:
-        property.getValue() == defaultPropertyValue
+        property.getValue() == defaultValue
 
         where:
         propertyName << testData*.name
-        defaultPropertyValue << testData*.defaultPropertyValue
+        defaultValue << testData*.defaultValue
     }
 
     @Unroll
@@ -203,7 +203,7 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
 
         where:
         propertyName << testData*.name
-        defaultPropertyValue << testData*.defaultPropertyValue
+        defaultValue << testData*.defaultValue
         simpleValue << testData*.simpleValue
     }
 
