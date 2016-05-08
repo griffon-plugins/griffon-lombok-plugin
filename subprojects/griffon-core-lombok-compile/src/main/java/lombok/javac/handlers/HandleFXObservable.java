@@ -23,6 +23,9 @@ import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
 import griffon.transform.FXObservable;
+import javafx.collections.ObservableList;
+import javafx.collections.ObservableMap;
+import javafx.collections.ObservableSet;
 import lombok.core.AST.Kind;
 import lombok.core.AnnotationValues;
 import lombok.javac.Javac;
@@ -31,10 +34,7 @@ import lombok.javac.JavacNode;
 import lombok.javac.JavacTreeMaker;
 import org.kordamp.jipsy.ServiceProviderFor;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static lombok.javac.Javac.*;
 import static lombok.javac.handlers.JavacHandlerUtil.*;
@@ -132,10 +132,12 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
         private JCVariableDecl field;
         private JCFieldAccess fieldAccess;
         private JCExpression type;
+        private Class<?> typeClass;
         private JCExpression propertyType;
         private JavacNode errorNode;
         private JavacTreeMaker treeMaker;
         private Name getterName;
+        private JCExpression lazyInit;
 
         public FXObservableFieldHandler(JavacNode fieldNode, JavacNode errorNode) {
             typeNode = fieldNode.up();
@@ -144,18 +146,78 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
             this.errorNode = errorNode;
             treeMaker = fieldNode.getTreeMaker();
             type = field.vartype;
+            try {
+                typeClass = Class.forName(rawTypeString(type.type));
+            } catch (ClassNotFoundException e) {
+                // ignore
+            }
             propertyType = getPropertyType();
             fieldAccess = treeMaker.Select(treeMaker.Ident(fieldNode.toName("this")), field.getName());
             getterName = fieldNode.toName(JavacHandlerUtil.toGetterName(fieldNode));
         }
 
         public void handle() {
-            field.vartype = genericType("Object", List.<Type>nil());
-            if (field.init != null && type.type.isPrimitive())
-                field.init = setterConversionToField(treeMaker.TypeCast(type, field.init));
+            changeFieldTypeToObject();
+            checkPrimitiveFieldInitializer();
+            maybeSetupLazyInitializer();
+
             injectMethod(typeNode, createPropertyMethod());
             injectMethod(typeNode, createGetter());
             injectMethod(typeNode, createSetter());
+        }
+
+        private void changeFieldTypeToObject() {
+            field.vartype = genericType("Object", List.<Type>nil());
+        }
+
+        private void checkPrimitiveFieldInitializer() {
+            if (field.init != null && type.type.isPrimitive()) {
+                field.init = setterConversionToField(treeMaker.TypeCast(type, field.init));
+            }
+        }
+
+        private void maybeSetupLazyInitializer() {
+            if (isMap() || isSet() || isList()) {
+                lazyInit = field.init;
+                field.init = null;
+                if (lazyInit == null) {
+                    lazyInit = getDefaultValue();
+                }
+            }
+        }
+
+        private JCExpression getDefaultValue() {
+            if (isObservableMap()) {
+                return treeMaker.Apply(
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "javafx.collections.FXCollections.observableHashMap"
+                        ),
+                        List.<JCExpression>nil()
+                );
+            }
+            if (isObservableSet()) {
+                return treeMaker.Apply(
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "javafx.collections.FXCollections.observableSet"
+                        ),
+                        List.<JCExpression>nil()
+                );
+            }
+            if (isObservableList()) {
+                return treeMaker.Apply(
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "javafx.collections.FXCollections.observableArrayList"
+                        ),
+                        List.<JCExpression>nil()
+                );
+            }
+            return null;
         }
 
         private JCExpression getPropertyType() {
@@ -163,23 +225,42 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
             String rawType = rawTypeString(type.type);
             String propertyType = PROPERTY_TYPE_MAP.get(rawType);
             if (propertyType == null) {
-                try {
-                    Class typeClass = Class.forName(rawType);
-                    if (Map.class.isAssignableFrom(typeClass))
-                        propertyType = "javafx.beans.property.MapProperty";
-                    else if (Set.class.isAssignableFrom(typeClass))
-                        propertyType = "javafx.beans.property.SetProperty";
-                    else if (java.util.List.class.isAssignableFrom(typeClass))
-                        propertyType = "javafx.beans.property.ListProperty";
-                } catch (ClassNotFoundException e) {
-                    // ignore
-                }
+                if (isMap())
+                    propertyType = "javafx.beans.property.MapProperty";
+                else if (isSet())
+                    propertyType = "javafx.beans.property.SetProperty";
+                else if (isList())
+                    propertyType = "javafx.beans.property.ListProperty";
                 if (propertyType == null) {
                     propertyType = "javafx.beans.property.ObjectProperty";
                     typeArguments = List.of(type.type);
                 }
             }
             return genericType(propertyType, typeArguments);
+        }
+
+        private boolean isMap() {
+            return typeClass != null && Map.class.isAssignableFrom(typeClass);
+        }
+
+        private boolean isObservableMap() {
+            return typeClass != null && ObservableMap.class.isAssignableFrom(typeClass);
+        }
+
+        private boolean isSet() {
+            return typeClass != null && Set.class.isAssignableFrom(typeClass);
+        }
+
+        private boolean isObservableSet() {
+            return typeClass != null && ObservableSet.class.isAssignableFrom(typeClass);
+        }
+
+        private boolean isList() {
+            return typeClass != null && java.util.List.class.isAssignableFrom(typeClass);
+        }
+
+        private boolean isObservableList() {
+            return typeClass != null && ObservableList.class.isAssignableFrom(typeClass);
         }
 
         private JCExpression getPropertyImpl() {
@@ -313,6 +394,17 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
             );
             JCExpression convertedPropertyValue = getterConversionFromProperty(propertyDotGet);
             JCExpression convertedFieldValue = getterConversionFromField();
+            if (lazyInit != null) {
+                // if (value == null) setValue(init)
+                JCExpression setter = treeMaker.Ident(fieldNode.toName(JavacHandlerUtil.toSetterName(fieldNode)));
+                statements.add(
+                        treeMaker.If(
+                                isNull(fieldAccess),
+                                treeMaker.Exec(treeMaker.Apply(List.<JCExpression>nil(), setter, List.<JCExpression>of(lazyInit))),
+                                null
+                        )
+                );
+            }
             // return value instanceof XProperty ? ((XProperty)name).get() : (X) name;
             statements.add(
                     treeMaker.Return(
@@ -374,6 +466,17 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
                     List.<JCExpression>nil(),
                     treeMaker.Select(treeMaker.TypeCast(propertyType, fieldAccess), setMethodName),
                     List.of(convertedValue));
+            JCExpression defaultValue = getDefaultValue();
+            if (defaultValue != null) {
+                // if (value == null) value = defaultValue
+                statements.add(
+                        treeMaker.If(
+                                isNull(value),
+                                treeMaker.Exec(treeMaker.Assign(value, defaultValue)),
+                                null
+                        )
+                );
+            }
             statements.add(
                     treeMaker.If(
                             // if (this.value instanceof XProperty)

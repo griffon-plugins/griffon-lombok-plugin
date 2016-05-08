@@ -102,7 +102,7 @@ public class FXObservableFields {
     @FXObservable
     private Double theDoubleWithDefault = Double.valueOf(42);
     @FXObservable
-    private ObservableMap<String, Integer> theMapWithDefault = FXCollections.observableHashMap();
+    private ObservableMap<String, Integer> theMapWithDefault = FXCollections.<String, Integer>observableHashMap();
     @FXObservable
     private ObservableSet<Integer> theSetWithDefault = FXCollections.observableSet(42);
     @FXObservable

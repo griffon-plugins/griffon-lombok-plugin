@@ -63,7 +63,7 @@ public class FXObservableType {
     private Long theLongWithDefault = Long.valueOf(42);
     private Float theFloatWithDefault = Float.valueOf(42);
     private Double theDoubleWithDefault = Double.valueOf(42);
-    private ObservableMap<String, Integer> theMapWithDefault = FXCollections.observableHashMap();
+    private ObservableMap<String, Integer> theMapWithDefault = FXCollections.<String, Integer>observableHashMap();
     private ObservableSet<Integer> theSetWithDefault = FXCollections.observableSet(42);
     private ObservableList<Integer> theListWithDefault = FXCollections.observableArrayList(42);
 }
