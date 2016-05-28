@@ -49,9 +49,9 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
             [name: "theLong", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultValue: 0L],
             [name: "theFloat", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultValue: 0f],
             [name: "theDouble", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultValue: 0d],
-            [name: "theMap", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultValue: FXCollections.observableHashMap()],
-            [name: "theSet", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultValue: FXCollections.observableSet()],
-            [name: "theList", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultValue: FXCollections.observableArrayList()],
+            [name: "theObservableMap", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultValue: FXCollections.observableHashMap()],
+            [name: "theObservableSet", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultValue: FXCollections.observableSet()],
+            [name: "theObservableList", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultValue: FXCollections.observableArrayList()],
 
             [name: "theStringWithDefault", propertyType: StringProperty, simpleType: String, simpleValue: "42", propertyValue: "42", defaultValue: "42"],
             [name: "thePrimitiveBooleanWithDefault", propertyType: BooleanProperty, simpleType: boolean, simpleValue: true, propertyValue: true, defaultValue: true],
@@ -71,9 +71,9 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
             [name: "theLongWithDefault", propertyType: LongProperty, simpleType: Long, simpleValue: 42, propertyValue: 42L, defaultValue: 42L],
             [name: "theFloatWithDefault", propertyType: FloatProperty, simpleType: Float, simpleValue: 42, propertyValue: 42f, defaultValue: 42f],
             [name: "theDoubleWithDefault", propertyType: DoubleProperty, simpleType: Double, simpleValue: 42, propertyValue: 42d, defaultValue: 42d],
-            [name: "theMapWithDefault", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultValue: FXCollections.observableHashMap()],
-            [name: "theSetWithDefault", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultValue: FXCollections.observableSet(42)],
-            [name: "theListWithDefault", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultValue: FXCollections.observableArrayList(42)],
+            [name: "theObservableMapWithDefault", propertyType: MapProperty, simpleType: ObservableMap, simpleValue: FXCollections.observableMap([key: 42]), propertyValue: FXCollections.observableMap([key: 42]), defaultValue: FXCollections.observableHashMap()],
+            [name: "theObservableSetWithDefault", propertyType: SetProperty, simpleType: ObservableSet, simpleValue: FXCollections.observableSet(42), propertyValue: FXCollections.observableSet(42), defaultValue: FXCollections.observableSet(42)],
+            [name: "theObservableListWithDefault", propertyType: ListProperty, simpleType: ObservableList, simpleValue: FXCollections.observableArrayList(42), propertyValue: FXCollections.observableArrayList(42), defaultValue: FXCollections.observableArrayList(42)],
     ]
 
     T bean
@@ -143,7 +143,7 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
         field.get(bean) == null
 
         where:
-        propertyName << ['theMapWithDefault', 'theSetWithDefault', 'theListWithDefault']
+        propertyName << ['theObservableMapWithDefault', 'theObservableSetWithDefault', 'theObservableListWithDefault']
     }
 
     @Unroll

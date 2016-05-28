@@ -59,11 +59,11 @@ public class FXObservableFields {
     @FXObservable
     private Double theDouble;
     @FXObservable
-    private ObservableMap<String, Integer> theMap;
+    private ObservableMap<String, Integer> theObservableMap;
     @FXObservable
-    private ObservableSet<Integer> theSet;
+    private ObservableSet<Integer> theObservableSet;
     @FXObservable
-    private ObservableList<Integer> theList;
+    private ObservableList<Integer> theObservableList;
 
     @FXObservable
     private String theStringWithDefault = "42";
@@ -102,9 +102,9 @@ public class FXObservableFields {
     @FXObservable
     private Double theDoubleWithDefault = Double.valueOf(42);
     @FXObservable
-    private ObservableMap<String, Integer> theMapWithDefault = FXCollections.<String, Integer>observableHashMap();
+    private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.<String, Integer>observableHashMap();
     @FXObservable
-    private ObservableSet<Integer> theSetWithDefault = FXCollections.observableSet(42);
+    private ObservableSet<Integer> theObservableSetWithDefault = FXCollections.observableSet(42);
     @FXObservable
-    private ObservableList<Integer> theListWithDefault = FXCollections.observableArrayList(42);
+    private ObservableList<Integer> theObservableListWithDefault = FXCollections.observableArrayList(42);
 }
