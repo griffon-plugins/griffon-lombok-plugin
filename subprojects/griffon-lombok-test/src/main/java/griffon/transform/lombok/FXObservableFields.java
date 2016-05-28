@@ -25,21 +25,21 @@ public class FXObservableFields {
     @FXObservable
     private String theString;
     @FXObservable
-    private boolean theSimpleBoolean;
+    private boolean thePrimitiveBoolean;
     @FXObservable
-    private char theSimpleChar;
+    private char thePrimitiveChar;
     @FXObservable
-    private byte theSimpleByte;
+    private byte thePrimitiveByte;
     @FXObservable
-    private short theSimpleShort;
+    private short thePrimitiveShort;
     @FXObservable
-    private int theSimpleInt;
+    private int thePrimitiveInt;
     @FXObservable
-    private long theSimpleLong;
+    private long thePrimitiveLong;
     @FXObservable
-    private float theSimpleFloat;
+    private float thePrimitiveFloat;
     @FXObservable
-    private double theSimpleDouble;
+    private double thePrimitiveDouble;
     @FXObservable
     private Object theObject;
     @FXObservable
@@ -68,21 +68,21 @@ public class FXObservableFields {
     @FXObservable
     private String theStringWithDefault = "42";
     @FXObservable
-    private boolean theSimpleBooleanWithDefault = true;
+    private boolean thePrimitiveBooleanWithDefault = true;
     @FXObservable
-    private char theSimpleCharWithDefault = 42;
+    private char thePrimitiveCharWithDefault = 42;
     @FXObservable
-    private byte theSimpleByteWithDefault = 42;
+    private byte thePrimitiveByteWithDefault = 42;
     @FXObservable
-    private short theSimpleShortWithDefault = 42;
+    private short thePrimitiveShortWithDefault = 42;
     @FXObservable
-    private int theSimpleIntWithDefault = 42;
+    private int thePrimitiveIntWithDefault = 42;
     @FXObservable
-    private long theSimpleLongWithDefault = 42L;
+    private long thePrimitiveLongWithDefault = 42L;
     @FXObservable
-    private float theSimpleFloatWithDefault = 42f;
+    private float thePrimitiveFloatWithDefault = 42f;
     @FXObservable
-    private double theSimpleDoubleWithDefault = 42d;
+    private double thePrimitiveDoubleWithDefault = 42d;
     @FXObservable
     private Object theObjectWithDefault = Integer.valueOf(42);
     @FXObservable

@@ -24,14 +24,14 @@ import javafx.collections.ObservableSet;
 @FXObservable
 public class FXObservableType {
     private String theString;
-    private boolean theSimpleBoolean;
-    private char theSimpleChar;
-    private byte theSimpleByte;
-    private short theSimpleShort;
-    private int theSimpleInt;
-    private long theSimpleLong;
-    private float theSimpleFloat;
-    private double theSimpleDouble;
+    private boolean thePrimitiveBoolean;
+    private char thePrimitiveChar;
+    private byte thePrimitiveByte;
+    private short thePrimitiveShort;
+    private int thePrimitiveInt;
+    private long thePrimitiveLong;
+    private float thePrimitiveFloat;
+    private double thePrimitiveDouble;
     private Object theObject;
     private Boolean theBoolean;
     private Character theCharacter;
@@ -46,14 +46,14 @@ public class FXObservableType {
     private ObservableList<Integer> theList;
 
     private String theStringWithDefault = "42";
-    private boolean theSimpleBooleanWithDefault = true;
-    private char theSimpleCharWithDefault = 42;
-    private byte theSimpleByteWithDefault = 42;
-    private short theSimpleShortWithDefault = 42;
-    private int theSimpleIntWithDefault = 42;
-    private long theSimpleLongWithDefault = 42L;
-    private float theSimpleFloatWithDefault = 42f;
-    private double theSimpleDoubleWithDefault = 42d;
+    private boolean thePrimitiveBooleanWithDefault = true;
+    private char thePrimitiveCharWithDefault = 42;
+    private byte thePrimitiveByteWithDefault = 42;
+    private short thePrimitiveShortWithDefault = 42;
+    private int thePrimitiveIntWithDefault = 42;
+    private long thePrimitiveLongWithDefault = 42L;
+    private float thePrimitiveFloatWithDefault = 42f;
+    private double thePrimitiveDoubleWithDefault = 42d;
     private Object theObjectWithDefault = Integer.valueOf(42);
     private Boolean theBooleanWithDefault = Boolean.TRUE;
     private Character theCharacterWithDefault = Character.valueOf((char) 42);
