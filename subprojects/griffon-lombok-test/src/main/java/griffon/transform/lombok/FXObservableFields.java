@@ -21,6 +21,8 @@ import javafx.collections.ObservableList;
 import javafx.collections.ObservableMap;
 import javafx.collections.ObservableSet;
 
+import java.util.*;
+
 public class FXObservableFields {
     @FXObservable
     private String theString;
@@ -58,6 +60,12 @@ public class FXObservableFields {
     private Float theFloat;
     @FXObservable
     private Double theDouble;
+    @FXObservable
+    private Map<String, Integer> theMap;
+    @FXObservable
+    private Set<Integer> theSet;
+    @FXObservable
+    private List<Integer> theList;
     @FXObservable
     private ObservableMap<String, Integer> theObservableMap;
     @FXObservable
@@ -101,6 +109,16 @@ public class FXObservableFields {
     private Float theFloatWithDefault = Float.valueOf(42);
     @FXObservable
     private Double theDoubleWithDefault = Double.valueOf(42);
+    @FXObservable
+    private Map<String, Integer> theMapWithDefault = new HashMap<String, Integer>();
+    @FXObservable
+    private Set<Integer> theSetWithDefault = new HashSet<Integer>() {{
+        add(42);
+    }};
+    @FXObservable
+    private List<Integer> theListWithDefault = new ArrayList<Integer>() {{
+        add(42);
+    }};
     @FXObservable
     private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.<String, Integer>observableHashMap();
     @FXObservable

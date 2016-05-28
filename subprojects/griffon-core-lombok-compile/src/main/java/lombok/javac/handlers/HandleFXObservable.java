@@ -217,6 +217,42 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
                         List.<JCExpression>nil()
                 );
             }
+            if (isMap()) {
+                return treeMaker.NewClass(
+                        null,
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "java.util.HashMap"
+                        ),
+                        List.<JCExpression>nil(),
+                        null
+                );
+            }
+            if (isSet()) {
+                return treeMaker.NewClass(
+                        null,
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "java.util.HashSet"
+                        ),
+                        List.<JCExpression>nil(),
+                        null
+                );
+            }
+            if (isList()) {
+                return treeMaker.NewClass(
+                        null,
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "java.util.ArrayList"
+                        ),
+                        List.<JCExpression>nil(),
+                        null
+                );
+            }
             return null;
         }
 
@@ -481,7 +517,7 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
                     treeMaker.If(
                             // if (this.value instanceof XProperty)
                             treeMaker.TypeTest(fieldAccess, rawType(propertyType)),
-                            // ((StringProperty)this.value).set(value);
+                            // ((XProperty)this.value).set(value);
                             treeMaker.Exec(propertyDotSet),
                             // else this.value = value;
                             treeMaker.Exec(
@@ -549,6 +585,36 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
                     "short".equals(rawType)) {
                 // (int) value
                 return treeMaker.TypeCast(treeMaker.TypeIdent(CTC_INT), value);
+            } else if (isMap() && !isObservableMap()) {
+                // FXCollections.observableMap(value)
+                return treeMaker.Apply(
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "javafx.collections.FXCollections.observableMap"
+                        ),
+                        List.<JCExpression>of(value)
+                );
+            } else if (isSet() && !isObservableSet()) {
+                // FXCollections.observableSet(value)
+                return treeMaker.Apply(
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "javafx.collections.FXCollections.observableSet"
+                        ),
+                        List.<JCExpression>of(value)
+                );
+            } else if (isList() && !isObservableList()) {
+                // FXCollections.observableList(value)
+                return treeMaker.Apply(
+                        typeArguments(type),
+                        JavacHandlerUtil.chainDotsString(
+                                fieldNode,
+                                "javafx.collections.FXCollections.observableList"
+                        ),
+                        List.<JCExpression>of(value)
+                );
             } else {
                 // value
                 return value;
