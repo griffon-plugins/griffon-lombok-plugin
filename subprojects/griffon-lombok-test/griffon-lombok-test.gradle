@@ -7,20 +7,12 @@ configurations {
     ecj
 }
 
-//sourceSets {
-//    ecj {
-//        main {
-//            java.srcDirs = ['src/main/java']
-//            resources.srcDirs = ['src/main/resources']
-//            compileClasspath += (configurations.compile + configurations.compileOnly)
-//        }
-//        test {
-//            groovy.srcDirs = ['src/test/groovy']
-//            resources.srcDirs = ['src/test/resources']
-//            compileClasspath += (configurations.testCompile + configurations.testCompileOnly)
-//        }
-//    }
-//}
+sourceSets {
+    ecj {
+        java.srcDirs = ['src/main/java']
+        compileClasspath += (configurations.compile + configurations.compileOnly)
+    }
+}
 
 dependencies {
     ecj "org.eclipse.jdt.core.compiler:ecj:3.7.1"
@@ -28,9 +20,26 @@ dependencies {
     compile "org.codehaus.griffon:griffon-core-compile:${rootProject.griffonVersion}"
 }
 
-//task testEcj(type: Test)
+compileEcjJava {
+    options.encoding = 'utf-8'
+    options.fork = true
+    doFirst {
+        options.forkOptions.with {
+            executable = 'java'
+            jvmArgs = [ '-cp', sourceSets.ecj.compileClasspath.asPath, 'org.eclipse.jdt.internal.compiler.batch.Main' ]
+        }
+    }
+}
 
-//tasks.check.dependsOn testEcj
+task testEcj(type: Test) {
+    classpath = configurations.runtime + configurations.testRuntime + sourceSets.ecj.output + sourceSets.test.output
+    reports {
+        html.destination = file("$buildDir/reports/testEcj")
+        junitXml.destination = file("$buildDir/test-results/ecj")
+    }
+}
+
+tasks.check.dependsOn testEcj
 
 task delombok {
     def srcJava = "src/main/java"
