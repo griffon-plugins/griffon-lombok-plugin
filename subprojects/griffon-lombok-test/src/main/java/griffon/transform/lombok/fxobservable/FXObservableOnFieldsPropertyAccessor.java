@@ -110,13 +110,13 @@ public class FXObservableOnFieldsPropertyAccessor {
     @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Double theDoubleWithDefault = Double.valueOf(42);
     @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
-    private Map<String, Integer> theMapWithDefault = new HashMap<String, Integer>();
+    private Map<String, Integer> theMapWithDefault = new HashMap<>();
     @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
-    private Set<Integer> theSetWithDefault = new HashSet<Integer>(Arrays.asList(42));
+    private Set<Integer> theSetWithDefault = new HashSet<>(Arrays.asList(42));
     @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
-    private List<Integer> theListWithDefault = new ArrayList<Integer>(Arrays.asList(42));
+    private List<Integer> theListWithDefault = new ArrayList<>(Arrays.asList(42));
     @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
-    private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.<String, Integer>observableHashMap();
+    private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.observableHashMap();
     @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private ObservableSet<Integer> theObservableSetWithDefault = FXCollections.observableSet(42);
     @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)

@@ -34,7 +34,10 @@ import lombok.javac.JavacNode;
 import lombok.javac.JavacTreeMaker;
 import org.kordamp.jipsy.ServiceProviderFor;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import static lombok.javac.Javac.*;
 import static lombok.javac.handlers.JavacHandlerUtil.*;
@@ -431,12 +434,21 @@ public class HandleFXObservable extends JavacAnnotationHandler<FXObservable> {
             JCExpression convertedPropertyValue = getterConversionFromProperty(propertyDotGet);
             JCExpression convertedFieldValue = getterConversionFromField();
             if (lazyInit != null) {
-                // if (value == null) setValue(init)
+                // if (this.value == null) {
+                //     // init might use diamond operator, assign it to a temporary variable first
+                //     Type value = init;
+                //     setValue(value);
+                // }
+                Name tempVarName = fieldNode.toName("value");
+                JCExpression tempVarAccess = treeMaker.Ident(tempVarName);
                 JCExpression setter = treeMaker.Ident(fieldNode.toName(JavacHandlerUtil.toSetterName(fieldNode)));
+                ListBuffer<JCStatement> then = new ListBuffer<>();
+                then.add(treeMaker.VarDef(treeMaker.Modifiers(0), tempVarName, type, lazyInit));
+                then.add(treeMaker.Exec(treeMaker.Apply(List.<JCExpression>nil(), setter, List.<JCExpression>of(tempVarAccess))));
                 statements.add(
                         treeMaker.If(
                                 isNull(fieldAccess),
-                                treeMaker.Exec(treeMaker.Apply(List.<JCExpression>nil(), setter, List.<JCExpression>of(lazyInit))),
+                                treeMaker.Block(0, then.toList()),
                                 null
                         )
                 );

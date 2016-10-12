@@ -68,10 +68,10 @@ public class FXObservableOnTypePropertyAccessor {
     private Long theLongWithDefault = Long.valueOf(42);
     private Float theFloatWithDefault = Float.valueOf(42);
     private Double theDoubleWithDefault = Double.valueOf(42);
-    private Map<String, Integer> theMapWithDefault = new HashMap<String, Integer>();
-    private Set<Integer> theSetWithDefault = new HashSet<Integer>(Arrays.asList(42));
-    private List<Integer> theListWithDefault = new ArrayList<Integer>(Arrays.asList(42));
-    private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.<String, Integer>observableHashMap();
+    private Map<String, Integer> theMapWithDefault = new HashMap<>();
+    private Set<Integer> theSetWithDefault = new HashSet<>(Arrays.asList(42));
+    private List<Integer> theListWithDefault = new ArrayList<>(Arrays.asList(42));
+    private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.observableHashMap();
     private ObservableSet<Integer> theObservableSetWithDefault = FXCollections.observableSet(42);
     private ObservableList<Integer> theObservableListWithDefault = FXCollections.observableArrayList(42);
 }
