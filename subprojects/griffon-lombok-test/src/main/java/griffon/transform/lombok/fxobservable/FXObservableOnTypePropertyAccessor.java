@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package griffon.transform.lombok;
+package griffon.transform.lombok.fxobservable;
 
 import griffon.transform.FXObservable;
 import javafx.collections.FXCollections;
@@ -23,8 +23,8 @@ import javafx.collections.ObservableSet;
 
 import java.util.*;
 
-@FXObservable
-public class FXObservableType {
+@FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
+public class FXObservableOnTypePropertyAccessor {
     private String theString;
     private boolean thePrimitiveBoolean;
     private char thePrimitiveChar;
@@ -69,12 +69,8 @@ public class FXObservableType {
     private Float theFloatWithDefault = Float.valueOf(42);
     private Double theDoubleWithDefault = Double.valueOf(42);
     private Map<String, Integer> theMapWithDefault = new HashMap<String, Integer>();
-    private Set<Integer> theSetWithDefault = new HashSet<Integer>() {{
-        add(42);
-    }};
-    private List<Integer> theListWithDefault = new ArrayList<Integer>() {{
-        add(42);
-    }};
+    private Set<Integer> theSetWithDefault = new HashSet<Integer>(Arrays.asList(42));
+    private List<Integer> theListWithDefault = new ArrayList<Integer>(Arrays.asList(42));
     private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.<String, Integer>observableHashMap();
     private ObservableSet<Integer> theObservableSetWithDefault = FXCollections.observableSet(42);
     private ObservableList<Integer> theObservableListWithDefault = FXCollections.observableArrayList(42);

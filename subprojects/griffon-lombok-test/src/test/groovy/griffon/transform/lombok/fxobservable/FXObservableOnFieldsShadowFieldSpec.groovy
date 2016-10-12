@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package griffon.transform.lombok
+package griffon.transform.lombok.fxobservable
 
-class FXObservableFieldsSpec extends AbstractFXObservableSpec<FXObservableFields> {
+class FXObservableOnFieldsShadowFieldSpec extends AbstractFXObservableShadowFieldSpec<FXObservableOnFieldsPlain> {
 
     def setup() {
-        bean = FXObservableFields.newInstance()
+        bean = new FXObservableOnFieldsPlain()
     }
 
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package griffon.transform.lombok;
+package griffon.transform.lombok.fxobservable;
 
 import griffon.transform.FXObservable;
 import javafx.collections.FXCollections;
@@ -23,106 +23,102 @@ import javafx.collections.ObservableSet;
 
 import java.util.*;
 
-public class FXObservableFields {
-    @FXObservable
+public class FXObservableOnFieldsPropertyAccessor {
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private String theString;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private boolean thePrimitiveBoolean;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private char thePrimitiveChar;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private byte thePrimitiveByte;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private short thePrimitiveShort;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private int thePrimitiveInt;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private long thePrimitiveLong;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private float thePrimitiveFloat;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private double thePrimitiveDouble;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Object theObject;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Boolean theBoolean;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Character theCharacter;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Byte theByte;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Short theShort;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Integer theInteger;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Long theLong;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Float theFloat;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Double theDouble;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Map<String, Integer> theMap;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Set<Integer> theSet;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private List<Integer> theList;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private ObservableMap<String, Integer> theObservableMap;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private ObservableSet<Integer> theObservableSet;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private ObservableList<Integer> theObservableList;
 
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private String theStringWithDefault = "42";
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private boolean thePrimitiveBooleanWithDefault = true;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private char thePrimitiveCharWithDefault = 42;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private byte thePrimitiveByteWithDefault = 42;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private short thePrimitiveShortWithDefault = 42;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private int thePrimitiveIntWithDefault = 42;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private long thePrimitiveLongWithDefault = 42L;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private float thePrimitiveFloatWithDefault = 42f;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private double thePrimitiveDoubleWithDefault = 42d;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Object theObjectWithDefault = Integer.valueOf(42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Boolean theBooleanWithDefault = Boolean.TRUE;
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Character theCharacterWithDefault = Character.valueOf((char) 42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Byte theByteWithDefault = Byte.valueOf((byte) 42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Short theShortWithDefault = Short.valueOf((short) 42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Integer theIntegerWithDefault = Integer.valueOf(42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Long theLongWithDefault = Long.valueOf(42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Float theFloatWithDefault = Float.valueOf(42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Double theDoubleWithDefault = Double.valueOf(42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private Map<String, Integer> theMapWithDefault = new HashMap<String, Integer>();
-    @FXObservable
-    private Set<Integer> theSetWithDefault = new HashSet<Integer>() {{
-        add(42);
-    }};
-    @FXObservable
-    private List<Integer> theListWithDefault = new ArrayList<Integer>() {{
-        add(42);
-    }};
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
+    private Set<Integer> theSetWithDefault = new HashSet<Integer>(Arrays.asList(42));
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
+    private List<Integer> theListWithDefault = new ArrayList<Integer>(Arrays.asList(42));
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private ObservableMap<String, Integer> theObservableMapWithDefault = FXCollections.<String, Integer>observableHashMap();
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private ObservableSet<Integer> theObservableSetWithDefault = FXCollections.observableSet(42);
-    @FXObservable
+    @FXObservable(FXObservable.Strategy.PROPERTY_ACCESOR)
     private ObservableList<Integer> theObservableListWithDefault = FXCollections.observableArrayList(42);
 }

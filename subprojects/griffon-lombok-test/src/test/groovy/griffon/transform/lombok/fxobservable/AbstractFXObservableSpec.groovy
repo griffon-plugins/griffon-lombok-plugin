@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package griffon.transform.lombok
+package griffon.transform.lombok.fxobservable
 
 import javafx.beans.property.*
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.collections.ObservableMap
 import javafx.collections.ObservableSet
-import spock.lang.Ignore
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -30,7 +29,7 @@ import java.lang.reflect.Modifier
 
 abstract class AbstractFXObservableSpec<T> extends Specification {
 
-    private static List<Map<String, Object>> testData = [
+    protected static List<Map<String, Object>> testData = [
             [name: "theString", propertyType: StringProperty, simpleType: String, simpleValue: "42", propertyValue: "42", defaultValue: null],
             [name: "thePrimitiveBoolean", propertyType: BooleanProperty, simpleType: boolean, simpleValue: true, propertyValue: true, defaultValue: false],
             [name: "thePrimitiveChar", propertyType: IntegerProperty, simpleType: char, simpleValue: 42 as char, propertyValue: 42, defaultValue: 0 as char],
@@ -109,7 +108,8 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
 
         where:
         propertyName << testData*.name
-        simpleType << testData*.simpleType }
+        simpleType << testData*.simpleType
+    }
 
     @Unroll
     def "Object exposes property-method for #propertyName"() {
@@ -123,33 +123,6 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
         where:
         propertyName << testData*.name
         propertyType << testData*.propertyType
-    }
-
-    @Unroll
-    def "Object has private member of type Object #propertyName"() {
-        given:
-        Field field = field(propertyName)
-
-        expect:
-        field.modifiers & Modifier.PRIVATE
-        field.type == Object
-
-        where:
-        propertyName << testData*.name
-        propertyType << testData*.propertyType
-    }
-
-    @Unroll
-    def "member for #propertyName is lazily instantiated"() {
-        given:
-        Field field = field(propertyName)
-        field.accessible = true
-
-        expect:
-        field.get(bean) == null
-
-        where:
-        propertyName << ['theObservableMapWithDefault', 'theObservableSetWithDefault', 'theObservableListWithDefault']
     }
 
     @Unroll
@@ -227,42 +200,22 @@ abstract class AbstractFXObservableSpec<T> extends Specification {
         simpleValue << testData*.simpleValue
     }
 
-    @Unroll
-    def "using only setter and getter does not create a property instance for #propertyName"() {
-        given:
-        Field field = field(propertyName)
-        field.accessible = true
-
-        expect:
-        !(field.get(bean) instanceof Property)
-
-        when:
-        bean."$propertyName" = simpleValue
-
-        then:
-        !(field.get(bean) instanceof Property)
-
-        where:
-        propertyName << testData*.name
-        simpleValue << testData*.simpleValue
-    }
-
-    private Method getter(String propertyName, Class<?> simpleType) {
+    protected Method getter(String propertyName, Class<?> simpleType) {
         String getterName = "${simpleType == boolean.class ? 'is' : 'get'}${propertyName.capitalize()}"
         bean.class.getMethod(getterName)
     }
 
-    private Method setter(String propertyName, Class<?> simpleType) {
+    protected Method setter(String propertyName, Class<?> simpleType) {
         String setterName = "set${propertyName.capitalize()}"
         Method setterMethod = bean.class.getMethod(setterName, simpleType)
     }
 
-    private Method propertyMethod(String propertyName) {
+    protected Method propertyMethod(String propertyName) {
         String propertyMethodName = "${propertyName}Property"
         bean.class.getMethod(propertyMethodName)
     }
 
-    private Field field(String propertyName) {
+    protected Field field(String propertyName) {
         bean.class.getDeclaredField("${propertyName}")
     }
 }
