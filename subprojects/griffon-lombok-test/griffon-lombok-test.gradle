@@ -39,7 +39,7 @@ task testEcj(type: Test) {
     }
 }
 
-tasks.check.dependsOn testEcj
+//tasks.check.dependsOn testEcj
 
 task delombok {
     def srcJava = "src/main/java"
