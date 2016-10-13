@@ -18,7 +18,7 @@ package griffon.transform.lombok.fxobservable
 class FXObservableOnTypeShadowFieldSpec extends AbstractFXObservableShadowFieldSpec<FXObservableOnFieldsPlain> {
 
     def setup() {
-        bean = new FXObservableOnTypePlain()
+        bean = new FXObservableOnTypeShadowField()
     }
 
 }

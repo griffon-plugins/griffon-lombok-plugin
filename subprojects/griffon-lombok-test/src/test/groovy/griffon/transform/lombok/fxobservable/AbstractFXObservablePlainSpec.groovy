@@ -15,25 +15,26 @@
  */
 package griffon.transform.lombok.fxobservable
 
-import javafx.beans.property.Property
 import spock.lang.Unroll
 
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 
-abstract class AbstractFXObservableShadowFieldSpec<T> extends AbstractFXObservableSpec<T> {
+abstract class AbstractFXObservablePlainSpec<T> extends AbstractFXObservableSpec<T> {
 
     @Unroll
-    def "Object has private member 'Object #propertyName'"() {
+    def "Object has private member '#propertyTypeName #propertyName'"() {
         given:
         Field field = field(propertyName)
 
         expect:
         field.modifiers & Modifier.PRIVATE
-        field.type == Object
+        field.type == propertyType
 
         where:
         propertyName << testData*.name
+        propertyType << testData*.propertyType
+        propertyTypeName = propertyType.simpleName
     }
 
     @Unroll
@@ -46,34 +47,7 @@ abstract class AbstractFXObservableShadowFieldSpec<T> extends AbstractFXObservab
         field.get(bean) == null
 
         where:
-        propertyName << [
-                'theMapWithDefault',
-                'theSetWithDefault',
-                'theListWithDefault',
-                'theObservableMapWithDefault',
-                'theObservableSetWithDefault',
-                'theObservableListWithDefault'
-        ]
-    }
-
-    @Unroll
-    def "using only setter and getter does not create a property instance for #propertyName"() {
-        given:
-        Field field = field(propertyName)
-        field.accessible = true
-
-        expect:
-        !(field.get(bean) instanceof Property)
-
-        when:
-        bean."$propertyName" = simpleValue
-
-        then:
-        !(field.get(bean) instanceof Property)
-
-        where:
         propertyName << testData*.name
-        simpleValue << testData*.simpleValue
     }
 
 }
